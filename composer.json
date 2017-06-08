@@ -1,0 +1,24 @@
+{
+	"name": "peterkahl/ip2asn",
+	"type": "library",
+	"description": "Maps IP address to ASN.",
+	"keywords": ["ip", "ip-to-asn", "asn", "bgp"],
+	"homepage": "https://github.com/peterkahl/ip2asn",
+	"license": "Apache License Version 2.0",
+	"authors": [
+		{
+			"name": "Peter Kahl",
+			"email": "peter.kahl@colossalmind.com",
+			"homepage": "https://www.colossalmind.com/",
+			"role": "Developer"
+		}
+	],
+	"require": {
+		"php": ">=5.3.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"peterkahl\\ip2asn\\": "src/"
+		}
+	}
+}
