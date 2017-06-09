@@ -3,7 +3,7 @@
  * IP 2 ASN
  * Maps IP address to ASN.
  *
- * @version    0.1 (2017-06-08 23:30:00 GMT)
+ * @version    0.2 (2017-06-09 09:28:00 GMT)
  * @author     Peter Kahl <peter.kahl@colossalmind.com>
  * @copyright  2015-2017 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -119,6 +119,10 @@ AS      | IP               | BGP Prefix          | CC | Registry | Allocated  | 
     else {
       $prefixBin = $this->AnyCIDRtoBinaryPrefix($prefix);
     }
+    $alloc = trim($alloc);
+    if (empty($alloc)) {
+      $alloc = 'NA';
+    }
     #----
     return array(
       'as_number'       => trim($num),
@@ -127,7 +131,7 @@ AS      | IP               | BGP Prefix          | CC | Registry | Allocated  | 
       'as_country_code' => trim($code),
       'as_isp'          => trim($isp),
       'as_nic'          => preg_replace('/NCC$/', '', strtoupper(trim($nic))),
-      'as_alloc'        => trim($alloc),
+      'as_alloc'        => $alloc,
     );
   }
 
