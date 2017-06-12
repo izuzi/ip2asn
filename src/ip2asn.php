@@ -3,7 +3,7 @@
  * IP 2 ASN
  * Maps IP address to ASN.
  *
- * @version    0.2 (2017-06-09 09:28:00 GMT)
+ * @version    0.3 (2017-06-12 06:03:00 GMT)
  * @author     Peter Kahl <peter.kahl@colossalmind.com>
  * @copyright  2015-2017 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -45,7 +45,7 @@ class ip2asn {
     if (empty($bin)) {
       $bin = $this->AnyIPtoBinary($ip, $ver);
     }
-    #=============================================
+    #----
     if ($ver == 4) {
       $readFile = $this->cacheDir .'/ASN4-CACHE.db';
     }
@@ -75,9 +75,14 @@ class ip2asn {
       }
     }
     #----
-    $arr = $this->getCymruAsn($ip);
+    for ($k = 0; $k < 4; $k++) {
+      $arr = $this->getCymruAsn($ip);
+      if (!empty($arr)) {
+        break;
+      }
+    }
     #----
-    if (empty($arr) || empty($arr['as_number'])) {
+    if (empty($arr)) {
       return array(
         'as_number'       => '',
         'as_prefix'       => '',

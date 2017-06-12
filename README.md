@@ -6,6 +6,14 @@ Maps IP address to ASN. Both IPv4 and IPv6 capable.
 
 Essential component of this library is the shell script `asn-cache-purge.sh`, which is to be installed into location of your choice and shall be executed hourly using crontab. (Edit parameters as needed.)
 
+## Dependencies
+
+You will need the `whois` package, which you can install with this or similar command:
+
+```
+$ apt install whois
+```
+
 ## Usage
 
 ```php
@@ -32,7 +40,7 @@ array(7) {
   ["as_nic"]=>
   string(4) "ARIN"
   ["as_alloc"]=>
-  string(0) ""
+  string(0) "NA"
 }
 */
 ```
