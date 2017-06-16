@@ -1,9 +1,9 @@
 <?php
 /**
  * IP 2 ASN
- * Maps IP address to ASN.
+ * IP address intelligence.
  *
- * @version    0.3 (2017-06-12 06:03:00 GMT)
+ * @version    0.4 (2017-06-16 01:33:00 GMT)
  * @author     Peter Kahl <peter.kahl@colossalmind.com>
  * @copyright  2015-2017 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -80,6 +80,7 @@ class ip2asn {
       if (!empty($arr)) {
         break;
       }
+      usleep(50000);
     }
     #----
     if (empty($arr)) {
@@ -140,7 +141,41 @@ AS      | IP               | BGP Prefix          | CC | Registry | Allocated  | 
     );
   }
 
-  #=====================================================================
+  #===================================================================
+
+  public function Asn2prefix($num) {
+    $num = preg_replace('/^(?:AS)?(\d+)$/', '\\1', $num);
+    #----
+    exec('whois -h asn.shadowserver.org prefix '.$num, $arr);
+    #----
+    if (empty($arr)) {
+      return false;
+    }
+    return $arr;
+  }
+
+  #===================================================================
+
+  public function ArrayAsn2prefix($arr) {
+    $new = array();
+    foreach ($arr as $num) {
+      for ($x = 0; $x < 10; $x++) {
+        $temp = $this->Asn2prefix($num);
+        if (!empty($temp)) {
+          break;
+        }
+        usleep(50000);
+      }
+      if (!empty($temp)) {
+        $new = array_merge($new, $temp);
+      }
+    }
+    $new = array_values($new);
+    natsort($new);
+    return $new;
+  }
+
+  #===================================================================
 
   public function GetIPversion($ip) {
     if (strpos($ip, ':') !== false) {
