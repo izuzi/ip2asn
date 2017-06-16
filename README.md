@@ -1,6 +1,6 @@
 # ip2asn
 
-Maps IP address to ASN. Both IPv4 and IPv6 capable.
+IP address intelligence. Maps IP address to ASN. ASN to prefix.
 
 ## Cache Purging
 
@@ -21,7 +21,7 @@ use peterkahl\ip2asn\ip2asn;
 
 $asnObj = new ip2asn;
 $asnObj->cacheDir = '/srv/cache';
-$temp = $asnObj->getAsn('8.8.8.8');
+$temp = $asnObj->getAsn('8.8.8.8'); # Accepts both IPv4 and IPv6
 
 var_dump($temp);
 
