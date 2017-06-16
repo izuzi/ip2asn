@@ -50,6 +50,8 @@ use peterkahl\ip2asn\ip2asn;
 
 $asnObj = new ip2asn;
 $asnObj->cacheDir = '/srv/cache';
+
+# This will get us an array of all prefixes for AS 94, 95, 96.
 $temp = $asnObj->ArrayAsn2prefix(array(94, 95, 96);
 
 var_dump($temp);
