@@ -50,7 +50,7 @@ use peterkahl\ip2asn\ip2asn;
 
 $asnObj = new ip2asn;
 $asnObj->cacheDir = '/srv/cache';
-$temp = $asnObj->ArrayAsn2prefix(94, 95, 96);
+$temp = $asnObj->ArrayAsn2prefix(array(94, 95, 96);
 
 var_dump($temp);
 ```
