@@ -3,7 +3,7 @@
  * IP 2 ASN
  * IP address intelligence.
  *
- * @version    0.4 (2017-06-16 01:33:00 GMT)
+ * @version    0.5 (2017-06-19 00:31:00 GMT)
  * @author     Peter Kahl <peter.kahl@colossalmind.com>
  * @copyright  2015-2017 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -80,7 +80,7 @@ class ip2asn {
       if (!empty($arr)) {
         break;
       }
-      usleep(50000);
+      usleep(10000);
     }
     #----
     if (empty($arr)) {
@@ -110,6 +110,7 @@ AS      | IP               | BGP Prefix          | CC | Registry | Allocated  | 
 4760    | 219.76.0.1       | 219.76.0.0/19       | HK | apnic    | 2002-03-19 | HKTIMS-AP PCCW Limited, HK
 */
   public function getCymruAsn($ip) {
+    $ip = preg_replace('/[^0-9a-f\.:]/i', '', $ip);
     #----
     exec('whois -h whois.cymru.com " -v '.$ip.'"', $arr);
     #----
@@ -144,7 +145,7 @@ AS      | IP               | BGP Prefix          | CC | Registry | Allocated  | 
   #===================================================================
 
   public function Asn2prefix($num) {
-    $num = preg_replace('/^(?:AS)?(\d+)$/', '\\1', $num);
+    $num = preg_replace('/[^0-9]/', '', $num);
     #----
     exec('whois -h asn.shadowserver.org prefix '.$num, $arr);
     #----
@@ -164,7 +165,7 @@ AS      | IP               | BGP Prefix          | CC | Registry | Allocated  | 
         if (!empty($temp)) {
           break;
         }
-        usleep(50000);
+        usleep(10000);
       }
       if (!empty($temp)) {
         $new = array_merge($new, $temp);
