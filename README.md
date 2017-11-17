@@ -1,26 +1,37 @@
 # ip2asn
 
-IP address intelligence. Maps IP address to ASN. ASN to prefix.
+IP address intelligence. Maps IP address to ASN. ASN to prefix. ASN to name.
 
-## Cache Purging
+## Required
 
-Essential component of this library is the shell script `asn-cache-purge.sh`, which is to be installed into location of your choice and shall be executed hourly using crontab. (Edit parameters as needed.)
+* Writeable cache directory (permissions, ownership)
+* PHP functions `exec()` and `shell_exec()` are not disabled
+* Can execute bash scripts (using crontab)
+* Package `whois` installed
+* Package `dnsutils` installed
 
-## Dependencies
-
-You will need the `whois` package, which you can install with this or similar command:
+## Installing Required Packages
 
 ```
-$ apt install whois
+sudo apt install whois dnsutils
 ```
+
+## Shell Scripts
+
+Essential component of this library are 2 shell scripts.
+
+Script `asn-cache-purge.sh` is used to purge cached data. You may want to run this script hourly using crontab. (Edit parameters as needed.)
+
+Script `update-asn2name.sh` is used to download database file for mapping AS numbers to their names. You may want to run this script once daily using crontab. (Edit parameters as needed.)
 
 ## Usage
 
+### IP to ASN (and all related information)
 ```php
 use peterkahl\ip2asn\ip2asn;
 
-$asnObj = new ip2asn;
-$asnObj->cacheDir = '/srv/cache';
+$asnObj = new ip2asn('/srv/bgp'); # The argument is the cache directory.
+
 $temp = $asnObj->getAsn('8.8.8.8'); # Accepts both IPv4 and IPv6
 
 var_dump($temp);
@@ -45,14 +56,26 @@ array(7) {
 */
 ```
 
+### AS Number(s) to List of Prefixes
 ```php
 use peterkahl\ip2asn\ip2asn;
 
-$asnObj = new ip2asn;
-$asnObj->cacheDir = '/srv/cache';
+$asnObj = new ip2asn('srv/bgp'); # The argument is the cache directory.
 
 # This will get us an array of all prefixes for AS 94, 95, 96.
-$temp = $asnObj->ArrayAsn2prefix(array(94, 95, 96);
+# The second argument defines your choice of IPv (4 or 6).
+$temp = $asnObj->ArrayAsn2prefix(array(94, 95, 96), 6);
 
 var_dump($temp);
+```
+
+### AS Number to Name (Description)
+```php
+use peterkahl\ip2asn\ip2asn;
+
+$asnObj = new ip2asn('srv/bgp'); # The argument is the cache directory.
+
+$temp = $asnObj->Asn2description(15169);
+
+echo $temp; # "GOOGLE - Google Inc., US"
 ```

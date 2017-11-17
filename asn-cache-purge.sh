@@ -3,7 +3,7 @@
 # IP 2 ASN
 # Maps IP address to ASN.
 #
-# @version    0.1 (2017-06-08 23:30:00 GMT)
+# @version    0.6 (2017-11-17 19:36:19 GMT)
 # @author     Peter Kahl <peter.kahl@colossalmind.com>
 # @copyright  2015-2017 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -30,7 +30,7 @@
 CACHETIME="15552000"
 
 # Cache directory
-CACHEDIR="/srv/cache"
+CACHEDIR="/srv/bgp"
 
 # ========== Do not edit below this line ==========
 
