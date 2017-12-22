@@ -3,8 +3,8 @@
  * IP 2 ASN
  * IP address intelligence.
  *
- * @version    0.6 (2017-11-17 19:36:19 GMT)
- * @author     Peter Kahl <peter.kahl@colossalmind.com>
+ * @version    0.7 (2017-12-22 02:41:10 GMT)
+ * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2017 Peter Kahl
  * @license    Apache License, Version 2.0
  *
@@ -30,6 +30,12 @@ use \Exception;
 class ip2asn {
 
   /**
+   * Enable/disable caching
+   * @var boolean
+   */
+  public $cacheEnable = true;
+
+  /**
    * Cache directory
    * @var string
    */
@@ -37,8 +43,22 @@ class ip2asn {
 
   #===================================================================
 
-  public function __construct($str) {
-    $this->cacheDir = $str;
+  /**
+   * Caching ...
+   * @var dir string
+   *
+   * To enable caching --
+   *      dir ... caching directory path
+   *
+   * To disable caching --
+   *      dir ... empty string ''
+   */
+  public function __construct($dir = '') {
+    $this->cacheDir = $dir;
+    if (empty($dir) || !$this->cacheEnable) {
+      $this->cacheEnable = false;
+      $this->cacheDir = '';
+    }
   }
 
   #===================================================================
@@ -55,36 +75,45 @@ class ip2asn {
       $bin = $this->AnyIPtoBinary($ip, $ver);
     }
 
-    if ($ver == 4) {
-      $readFile = $this->cacheDir .'/ASN4-CACHE.db';
-    }
-    elseif ($ver == 6) {
-      $readFile = $this->cacheDir .'/ASN6-CACHE.db';
-    }
-    else {
-      throw new Exception('Illegal value argument ver');
-    }
 
-    if (file_exists($readFile)) {
-      $file_obj_gtn = new SplFileObject($readFile);
-      while (!$file_obj_gtn->eof()) {
-        $line = $file_obj_gtn->fgets();
-        $line = trim($line);
-        if (strpos($line, '|') !== false) {
-          list($epoch, $prefixBin, $prefix, $code, $num, $isp, $nic, $alloc) = explode('|', $line);
-          if ($this->MatchBinaryStrings($bin, $prefixBin)) {
-            return array(
-              'as_number'       => $num,
-              'as_prefix'       => $prefix,
-              'as_prefix_bin'   => $prefixBin,
-              'as_country_code' => $code,
-              'as_isp'          => $isp,
-              'as_nic'          => $nic,
-              'as_alloc'        => $alloc,
-            );
+    if ($this->cacheEnable) {
+
+      if ($ver == 4) {
+        $readFile = $this->cacheDir .'/ASN4-CACHE.db';
+      }
+      elseif ($ver == 6) {
+        $readFile = $this->cacheDir .'/ASN6-CACHE.db';
+      }
+      else {
+        throw new Exception('Illegal value argument ver');
+      }
+
+      if (file_exists($readFile)) {
+
+        $fileObj = new SplFileObject($readFile);
+
+        while (!$fileObj->eof()) {
+          $line = $fileObj->fgets();
+          $line = trim($line);
+          if (strpos($line, '|') !== false) {
+            list($epoch, $prefixBin, $prefix, $code, $num, $isp, $nic, $alloc) = explode('|', $line);
+            if ($this->MatchBinaryStrings($bin, $prefixBin)) {
+              return array(
+                'as_number'       => $num,
+                'as_prefix'       => $prefix,
+                'as_prefix_bin'   => $prefixBin,
+                'as_country_code' => $code,
+                'as_isp'          => $isp,
+                'as_nic'          => $nic,
+                'as_alloc'        => $alloc,
+              );
+            }
           }
         }
+
+        unset($fileObj);
       }
+
     }
 
     $arr = $this->getCymruAsn($ip, $ver);
@@ -105,9 +134,10 @@ class ip2asn {
       $arr['as_prefix_bin'] = $bin;
     }
 
-    $str = time().'|'.$arr['as_prefix_bin'].'|'.$arr['as_prefix'].'|'.$arr['as_country_code'].'|'.$arr['as_number'].'|'.$arr['as_isp'].'|'.$arr['as_nic'].'|'.$arr['as_alloc'];
-
-    file_put_contents($readFile, $str . PHP_EOL, FILE_APPEND | LOCK_EX);
+    if ($this->cacheEnable) {
+      $str = time().'|'.$arr['as_prefix_bin'].'|'.$arr['as_prefix'].'|'.$arr['as_country_code'].'|'.$arr['as_number'].'|'.$arr['as_isp'].'|'.$arr['as_nic'].'|'.$arr['as_alloc'];
+      $this->FileAppendContents($readFile, $str . PHP_EOL);
+    }
 
     return $arr;
   }
@@ -120,6 +150,9 @@ $ dig +short 31.108.55.213.origin.asn.cymru.com TXT
 "24757 | 213.55.108.0/24 | ET | afrinic | 2000-10-12"
 "24757 | 213.55.108.0/23 | ET | afrinic | 2000-10-12"
 "24757 | 213.55.108.0/22 | ET | afrinic | 2000-10-12"
+
+$ dig +short 38.224.243.162.origin.asn.cymru.com TXT
+"14061 62567 | 162.243.192.0/18 | US | arin | 2013-09-06"
 */
   public function getCymruAsn($ip, $ver = 0) {
 
@@ -128,14 +161,17 @@ $ dig +short 31.108.55.213.origin.asn.cymru.com TXT
     if (empty($ver)) {
       $ver = $this->GetIPversion($ip);
     }
+    else {
+      $ver = (integer) $ver;
+    }
 
-    if ($ver == 4) {
+    if ($ver === 4) {
       $tok = explode('.', $ip);
       $tok = array_reverse($tok);
       $rev = implode('.', $tok);
       exec('dig +short '. $rev .'.origin.asn.cymru.com TXT', $arr);
     }
-    elseif ($ver == 6) {
+    elseif ($ver === 6) {
       $ip  = $this->IPv6expand($ip);
       $ip  = str_replace(':', '', $ip);
       $tok = str_split($ip);
@@ -194,31 +230,99 @@ $ dig +short 31.108.55.213.origin.asn.cymru.com TXT
 
   public function Asn2prefix($num, $ver = 4) {
 
+    if (strpos($num, ' ') !== false) {
+      $num = $this->ResetExplode(' ', $num);
+    }
+
     $num = intval($num);
     $ver = intval($ver);
 
+    #####################################################
     if ($ver === 4) {
+
       exec('whois -h whois.radb.net "!gas'. $num .'"', $arr);
+
+      if (empty($arr) || count($arr) == 1) {
+        return false;
+      }
+
+      array_shift($arr); # Remove the first element
+      array_pop($arr);   # Remove the last element
+
+      $str = '';
+
+      foreach ($arr as $ka => $line) {
+
+        if (!empty($partial)) {
+          $line = trim($partial . $line);
+          $partial = '';
+        }
+
+        $elem = explode(' ', $line);
+
+        foreach ($elem as $ke => $val) {
+          if ($this->validIPv4_cidr($val)) {
+            $str .= ' '. $val;
+          }
+          else {
+            $partial = $val;
+          }
+        }
+
+      }
+
+      $arr = explode(' ', trim($str . $partial));
+
+      $arr = array_unique($arr);
+      natsort($arr);
+
     }
+    #####################################################
     elseif ($ver === 6) {
+
       exec('whois -h whois.radb.net "!6as'. $num .'"', $arr);
+
+      if (empty($arr) || count($arr) == 1) {
+        return false;
+      }
+
+      array_shift($arr); # Remove the first element
+      array_pop($arr);   # Remove the last element
+
+      $str = '';
+
+      foreach ($arr as $ka => $line) {
+
+        if (!empty($partial)) {
+          $line = trim($partial . $line);
+          $partial = '';
+        }
+
+        $elem = explode(' ', $line);
+
+        foreach ($elem as $ke => $val) {
+          if ($this->validIPv4_cidr($val)) {
+            $str .= ' '. $val;
+          }
+          else {
+            $partial = $val;
+          }
+        }
+
+      }
+
+      $arr = explode(' ', trim(strtolower($str . $partial)));
+
+      $arr = array_unique($arr);
+      sort($arr);
+
     }
+    #####################################################
     else {
       throw new Exception('Illegal value argument ver');
     }
 
-    if (empty($arr) || count($arr) == 1) {
-      return false;
-    }
-
-    array_shift($arr); # Remove the first element
-    array_pop($arr);   # Remove the last element
-
-    $str = implode('', $arr);
-
-    $str = strtolower($str);
-
-    return explode(' ', $str);
+    return $arr;
   }
 
   #===================================================================
@@ -262,11 +366,14 @@ $ dig +short 31.108.55.213.origin.asn.cymru.com TXT
     if (empty($ver)) {
       $ver = $this->GetIPversion($ip);
     }
+    else {
+      $ver = (integer) $ver;
+    }
 
-    if ($ver == 4) {
+    if ($ver === 4) {
       return $this->IPv4toBinary($ip);
     }
-    elseif ($ver == 6) {
+    elseif ($ver === 6) {
       return $this->IPv6toBinary($ip);
     }
 
@@ -317,10 +424,11 @@ $ dig +short 31.108.55.213.origin.asn.cymru.com TXT
       $ver = $this->GetIPversion($ip);
     }
 
-    if ($ver == 4) {
+    if ($ver === 4) {
       return substr($this->IPv4toBinary($ip), 0, $mask);
     }
-    elseif ($ver == 6) {
+
+    if ($ver === 6) {
       return substr($this->IPv6toBinary($ip), 0, $mask);
     }
 
@@ -330,7 +438,7 @@ $ dig +short 31.108.55.213.origin.asn.cymru.com TXT
   #===================================================================
 
   private function MatchBinaryStrings($needle, $haystack) {
-    return substr($needle, 0, strlen($haystack)) == $haystack;
+    return substr($needle, 0, strlen($haystack)) === $haystack;
   }
 
   #===================================================================
@@ -355,7 +463,7 @@ $ dig +short 31.108.55.213.origin.asn.cymru.com TXT
     }
     unset($p);
     $result = implode(':', $part);
-    if (strlen($result) == 39) {
+    if (strlen($result) === 39) {
       return $result;
     }
     return false;
@@ -369,6 +477,52 @@ $ dig +short 31.108.55.213.origin.asn.cymru.com TXT
       $arr[$key] = $this->IPv6expand($ip) .'/'. $mask;
     }
     return $arr;
+  }
+
+  #===================================================================
+
+  private function validIPv4_cidr($cidr) {
+    if (preg_match('/^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5])))\/([1-9]|1[0-9]|2[0-9]|3[0-2])$/', $cidr)) {
+      return true;
+    }
+    return false;
+  }
+
+  #===================================================================
+
+  private function validIPv6_cidr($cidr) {
+    if (preg_match('/^((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[1-9])){3}))|:)))\/([1-9]|[1-9][0-9]|1[01][0-9]|12[0-8])$/', $cidr)) {
+      return true;
+    }
+    return false;
+  }
+
+  #===================================================================
+
+  private function ResetExplode($glue, $str) {
+    if (strpos($str, $glue) === false) {
+      return $str;
+    }
+    $str = explode($glue, $str);
+    return reset($str);
+  }
+
+  #===================================================================
+
+  private function FileAppendContents($file, $str) {
+    if (!file_exists($file)) {
+      file_put_contents($file, $str, LOCK_EX);
+      return;
+    }
+    $handle = fopen($file, 'r+');
+    while (!flock($handle, FILE_APPEND | LOCK_EX)) {
+      usleep(1);
+    }
+    ftruncate($handle, 0);
+    fwrite($handle, $str);
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
   }
 
   #===================================================================
