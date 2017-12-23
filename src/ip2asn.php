@@ -3,7 +3,7 @@
  * IP 2 ASN
  * IP address intelligence.
  *
- * @version    0.7 (2017-12-22 02:41:10 GMT)
+ * @version    0.8 (2017-12-23 02:46:20 GMT)
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2017 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -92,12 +92,17 @@ class ip2asn {
 
         $fileObj = new SplFileObject($readFile);
 
+        while (!$fileObj->flock(LOCK_EX)) {
+          usleep(1);
+        }
+
         while (!$fileObj->eof()) {
           $line = $fileObj->fgets();
           $line = trim($line);
           if (strpos($line, '|') !== false) {
             list($epoch, $prefixBin, $prefix, $code, $num, $isp, $nic, $alloc) = explode('|', $line);
             if ($this->MatchBinaryStrings($bin, $prefixBin)) {
+              $fileObj->flock(LOCK_UN);
               return array(
                 'as_number'       => $num,
                 'as_prefix'       => $prefix,
@@ -111,7 +116,7 @@ class ip2asn {
           }
         }
 
-        unset($fileObj);
+        $fileObj->flock(LOCK_UN);
       }
 
     }
@@ -510,19 +515,18 @@ $ dig +short 38.224.243.162.origin.asn.cymru.com TXT
   #===================================================================
 
   private function FileAppendContents($file, $str) {
-    if (!file_exists($file)) {
-      file_put_contents($file, $str, LOCK_EX);
-      return;
-    }
-    $handle = fopen($file, 'r+');
-    while (!flock($handle, FILE_APPEND | LOCK_EX)) {
+        
+    $fileObj = new SplFileObject($file, 'a');
+
+    while (!$fileObj->flock(LOCK_EX)) {
       usleep(1);
     }
-    ftruncate($handle, 0);
-    fwrite($handle, $str);
-    fflush($handle);
-    flock($handle, LOCK_UN);
-    fclose($handle);
+
+    $bytes = $fileObj->fwrite($str);
+    
+    $fileObj->flock(LOCK_UN);
+
+    return $bytes;
   }
 
   #===================================================================
