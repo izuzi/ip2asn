@@ -3,7 +3,7 @@
  * IP 2 ASN
  * IP address intelligence.
  *
- * @version    0.8 (2017-12-23 02:46:20 GMT)
+ * @version    0.9 (2018-01-07 05:21:56 GMT)
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2017 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -254,7 +254,8 @@ $ dig +short 38.224.243.162.origin.asn.cymru.com TXT
       array_shift($arr); # Remove the first element
       array_pop($arr);   # Remove the last element
 
-      $str = '';
+      $str     = '';
+      $partial = '';
 
       foreach ($arr as $ka => $line) {
 
@@ -294,7 +295,8 @@ $ dig +short 38.224.243.162.origin.asn.cymru.com TXT
       array_shift($arr); # Remove the first element
       array_pop($arr);   # Remove the last element
 
-      $str = '';
+      $str     = '';
+      $partial = '';
 
       foreach ($arr as $ka => $line) {
 
@@ -515,7 +517,7 @@ $ dig +short 38.224.243.162.origin.asn.cymru.com TXT
   #===================================================================
 
   private function FileAppendContents($file, $str) {
-        
+
     $fileObj = new SplFileObject($file, 'a');
 
     while (!$fileObj->flock(LOCK_EX)) {
@@ -523,7 +525,7 @@ $ dig +short 38.224.243.162.origin.asn.cymru.com TXT
     }
 
     $bytes = $fileObj->fwrite($str);
-    
+
     $fileObj->flock(LOCK_UN);
 
     return $bytes;
