@@ -4,7 +4,7 @@
 	"description": "IP address intelligence. Maps IP address to ASN. ASN to prefix.",
 	"keywords": ["ip", "ip-to-asn", "asn", "bgp", "asn-to-prefix"],
 	"homepage": "https://github.com/peterkahl/ip2asn",
-	"license": "Apache License Version 2.0",
+	"license": "Apache-2.0",
 	"authors": [
 		{
 			"name": "Peter Kahl",
