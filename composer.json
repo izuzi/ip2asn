@@ -1,24 +1,23 @@
 {
-	"name": "peterkahl/ip2asn",
-	"type": "library",
-	"description": "IP address intelligence. Maps IP address to ASN. ASN to prefix.",
-	"keywords": ["ip", "ip-to-asn", "asn", "bgp", "asn-to-prefix"],
-	"homepage": "https://github.com/peterkahl/ip2asn",
-	"license": "Apache-2.0",
-	"authors": [
-		{
-			"name": "Peter Kahl",
-			"email": "peter.kahl@colossalmind.com",
-			"homepage": "https://www.colossalmind.com/",
-			"role": "Developer"
-		}
-	],
-	"require": {
-		"php": ">=5.3.0"
-	},
-	"autoload": {
-		"psr-4": {
-			"peterkahl\\ip2asn\\": "src/"
-		}
-	}
+    "name": "peterkahl/ip2asn",
+    "type": "library",
+    "description": "Maps IP address to ASN. ASN to prefix. Both IPv4 and IPv6.",
+    "keywords": ["ip", "ip-to-asn", "asn", "bgp", "asn-to-prefix"],
+    "homepage": "https://github.com/peterkahl/ip2asn",
+        "license": "Apache-2.0",
+        "authors": [
+            {
+                "name": "Peter Kahl",
+                "homepage": "https://www.cidrcalculator.com/",
+                "role": "Developer"
+            }
+        ],
+    "require": {
+        "php": ">=5.3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "peterkahl\\ip2asn\\": "src/"
+        }
+    }
 }
