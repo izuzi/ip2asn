@@ -2,7 +2,7 @@
 
 [![Downloads](https://img.shields.io/packagist/dt/peterkahl/ip2asn.svg)](https://packagist.org/packages/peterkahl/ip2asn.svg)
 [![Download per Month](https://img.shields.io/packagist/dm/peterkahl/ip2asn.svg)](https://packagist.org/packages/peterkahl/ip2asn)
-[![License](http://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
+[![License](https://img.shields.io/github/license/peterkahl/ip2asn.svg?logo=License)](https://github.com/peterkahl/ip2asn/blob/master/LICENSE)
 [![If this project has business value for you then don't hesitate to support me with a small donation.](https://img.shields.io/badge/Donations-via%20Paypal-blue.svg)](https://www.paypal.me/PeterK93)
 
 Maps IP address to ASN. ASN to prefix. ASN to name. Both IPv4 and IPv6.
