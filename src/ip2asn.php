@@ -3,7 +3,7 @@
  * ip2asn
  * Maps IP address to as number and related methods.
  *
- * @version    2020-09-20 07:06:00 UTC
+ * @version    2020-09-20 10:51:00 UTC
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2020 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -124,6 +124,7 @@ class ip2asn
               'as_isp'          => $isp,
               'as_nic'          => $nic,
               'as_alloc'        => $alloc,
+              'as_source'       => 'ip2asn',
             );
           }
         }
@@ -141,6 +142,7 @@ class ip2asn
           'as_isp'          => '',
           'as_nic'          => '',
           'as_alloc'        => '',
+          'as_source'       => 'ip2asn',
         );
       }
 
@@ -166,7 +168,7 @@ class ip2asn
    * @return array
    * @throws \Exception
    */
-  private function _get_cymru_asn($ip, $ver = 0)
+  public function _get_cymru_asn($ip, $ver = 0)
   {
     $arr = array();
 
@@ -188,7 +190,7 @@ class ip2asn
     }
 
     if (empty($arr)) {
-      throw new Exception("Query returned no result");
+      return array();
     }
 
     list($num, $prefix, $code, $nic, $alloc) = explode('|', trim($arr[0], " \"\t\n\r\0\x0B"));
@@ -220,6 +222,7 @@ class ip2asn
       'as_isp'          => $this->Asn2description($num),
       'as_nic'          => strtoupper($nic),
       'as_alloc'        => $alloc,
+      'as_source'       => 'ip2asn',
     );
   }
 
@@ -253,7 +256,7 @@ class ip2asn
       throw new Exception("Illegal value argument ver");
     }
 
-    $filename = $this->_get_file_prefix() ."_prefixes_v${ver}_${num}.json";
+    $filename = $this->_get_file_prefix() ."prefixes_v${ver}_${num}.json";
 
     if (file_exists($filename) && filemtime($filename) + $this->_get_caching_time() > time()) {
       return json_decode($this->_get_file_contents($filename), true);
@@ -593,7 +596,10 @@ class ip2asn
    */
   private function _get_file_prefix()
   {
-    return $this->_file_prefix;
+    if (!empty($this->_file_prefix)) {
+      return $this->_file_prefix;
+    }
+    throw new Exception("Property _file_prefix cannot be empty");
   }
 
 
