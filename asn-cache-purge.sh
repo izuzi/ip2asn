@@ -4,7 +4,7 @@
 #
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-21 10:38:00 UTC
+# @version    2020-09-21 12:49:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -31,6 +31,10 @@ CACHEDIR="/srv/bgp"
 # Cache time in seconds
 CACHETIME="1209600" # 14 days
 
+# If a files has more than MAX_LINES, it will be tailed to $REDUCETO_LINES
+MAX_LINES="500000"
+
+REDUCETO_LINES="100000"
 
 # ================= Do not edit below this line ======================
 
@@ -75,6 +79,23 @@ function milliStopwatch()
     printf %s "${seconds}.$(echo "$ninechars" | cut -b1-2)s"
 }
 
+function sec2days()
+{
+  local secs="$1"
+  if (( secs >= 86400 ))
+  then
+    printf %s "$((secs/86400))d"
+  elif (( secs >= 3600 ))
+    then
+    printf %s "$((secs/3600))h"
+  elif (( secs >= 60 ))
+    then
+    printf %s "$((secs/60))m"
+  else
+    printf %s "${secs}s"
+  fi
+}
+
 function log_write()
 {
   # Usage:
@@ -94,13 +115,15 @@ function get_lcount()
   printf %s "$(wc -l $1 | cut -d " " -f1)"
 }
 
+READABLECTM="$(sec2days "$CACHETIME")"
+
 # ====================================================================
 
 ver="4"
 
 cachefile="${CACHEDIR}/${MODULENAME}_v${ver}_asdata.cache"
 
-log_write ">>>> Purging file $cachefile" "1"
+log_write ">>>> Purging file $cachefile ; CACHETIME=${READABLECTM}" "1"
 
 randstr="$(RandomString)"
 
@@ -114,13 +137,15 @@ if [ -s $cachefile ]
 then
   lines="$(get_lcount $cachefile)"
   log_write "File has $lines lines" "2"
-  if (( lines > 500000 ))
+  if (( lines > MAX_LINES ))
   then
-    log_write "Reducing file to 200000 lines" "2"
-    tail -n 200000 $cachefile > $TEMPA
+    log_write "Reducing file to $REDUCETO_LINES lines" "1"
+    tail -n "$REDUCETO_LINES" $cachefile > $TEMPA
     chown www-data:www-data $TEMPA && chmod 0644 $TEMPA
-    mv -f $TEMPA $cachefile
+    mv $TEMPA $cachefile
   fi
+else
+  log_write "File not found or empty" "2"
 fi
 
 # ====================================================================
@@ -139,10 +164,12 @@ then
       deleted="$((deleted+1))"
     fi
   done < $TEMPA
-  log_write "STALE: Deleted $deleted lines" "2"
+  log_write "STALE: Deleted $deleted lines" "1"
   chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-  mv -f $TEMPB $cachefile
+  mv $TEMPB $cachefile
   rm $TEMPA
+else
+  log_write "File not found or empty" "2"
 fi
 
 # ====================================================================
@@ -162,10 +189,12 @@ then
       deleted="$((deleted+1))"
     fi
   done < $TEMPA
-  log_write "DUPLICATES: Deleted $deleted lines" "2"
+  log_write "DUPLICATES: Deleted $deleted lines" "1"
   chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-  mv -f $TEMPB $cachefile
+  mv $TEMPB $cachefile
   rm $TEMPA
+else
+  log_write "File not found or empty" "2"
 fi
 
 # ====================================================================
@@ -174,7 +203,7 @@ ver="6"
 
 cachefile="${CACHEDIR}/${MODULENAME}_v${ver}_asdata.cache"
 
-log_write ">>>> Purging file $cachefile" "1"
+log_write ">>>> Purging file $cachefile ; CACHETIME=${READABLECTM}" "1"
 
 randstr="$(RandomString)"
 
@@ -188,13 +217,15 @@ if [ -s $cachefile ]
 then
   lines="$(get_lcount $cachefile)"
   log_write "File has $lines lines" "2"
-  if (( lines > 500000 ))
+  if (( lines > MAX_LINES ))
   then
-    log_write "Reducing file to 200000 lines" "2"
-    tail -n 200000 $cachefile > $TEMPA
+    log_write "Reducing file to $REDUCETO_LINES lines" "1"
+    tail -n "$REDUCETO_LINES" $cachefile > $TEMPA
     chown www-data:www-data $TEMPA && chmod 0644 $TEMPA
-    mv -f $TEMPA $cachefile
+    mv $TEMPA $cachefile
   fi
+else
+  log_write "File not found or empty" "2"
 fi
 
 # ====================================================================
@@ -213,10 +244,12 @@ then
       deleted="$((deleted+1))"
     fi
   done < $TEMPA
-  log_write "STALE: Deleted $deleted lines" "2"
+  log_write "STALE: Deleted $deleted lines" "1"
   chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-  mv -f $TEMPB $cachefile
+  mv $TEMPB $cachefile
   rm $TEMPA
+else
+  log_write "File not found or empty" "2"
 fi
 
 # ====================================================================
@@ -236,14 +269,36 @@ then
       deleted="$((deleted+1))"
     fi
   done < $TEMPA
-  log_write "DUPLICATES: Deleted $deleted lines" "2"
+  log_write "DUPLICATES: Deleted $deleted lines" "1"
   chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-  mv -f $TEMPB $cachefile
+  mv $TEMPB $cachefile
   rm $TEMPA
+else
+  log_write "File not found or empty" "2"
 fi
 
 # ====================================================================
 
-log_write "Process completed in $(milliStopwatch $TSTARTM)" "2"
+log_write ">>>> Purging PREFIXES cache ; CACHETIME=${READABLECTM}" "1"
+
+if (( LOG_LEVEL  == 2 ))
+then
+  totalcnt="$(find $DIRCACHEBGP -name "${MODULENAME}_prefixes_v*.json" -type f | wc -l)"
+  log_write "PREFIXES: Found $totalcnt files" "2"
+fi
+
+stale_count="$(find $DIRCACHEBGP -name "${MODULENAME}_prefixes_v*.json" -mmin +"$((CACHETIME/60))" -type f | wc -l)"
+
+if (( stale_count > 0 ))
+then
+  find $DIRCACHEBGP -name "${MODULENAME}_prefixes_v*.json" -mmin +"$((CACHETIME/60))" -type f -delete && \
+    log_write "PREFIXES: Deleted $stale_count files" "1"
+else
+  log_write "PREFIXES: Nothing to delete" "2"
+fi
+
+# ====================================================================
+
+log_write "Process completed in $(milliStopwatch "$TSTARTM")" "2"
 
 exit 0

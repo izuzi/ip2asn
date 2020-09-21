@@ -4,7 +4,7 @@
 #
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-21 07:51:00 UTC
+# @version    2020-09-21 12:49:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -92,7 +92,7 @@ function RandomString()
 # ====================================================================
 
 
-TEMPDIR="${CACHEDIR}/${MODULENAME}_tmp_$(RandomString)"
+TEMPDIR="${CACHEDIR}/${MODULENAME}_tmpdir_$(RandomString)"
 
 mkdir "${TEMPDIR}"
 
@@ -103,7 +103,7 @@ TEMP1="${TEMPDIR}/1.tmp"
 TEMP2="${TEMPDIR}/2.tmp"
 
 
-log_write "Downloading $SOURCEURL" "2"
+log_write "Downloading $SOURCEURL" "1"
 
 curl -L --compressed --silent --header "cache-control: max-age=0" --header "accept: */*" --header "accept-language: en-GB,en;q=0.5" -A "${UAGENT}" --output "$TEMP0" "$SOURCEURL"
 
@@ -124,10 +124,10 @@ if [ -s $filename ]
 then
   log_write "OK: File $filename exists with $(wc -l $filename | cut -d " " -f1) lines" "1"
 else
-  log_write "CRIT: File $filename not found" "1"
+  log_write "CRIT: File $filename not found or empty" "1"
 fi
 
 
-log_write "Process completed in $(stopwatch $TSTARTSEC)" "2"
+log_write "Process completed in $(stopwatch "$TSTARTSEC")" "2"
 
 exit 0

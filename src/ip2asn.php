@@ -3,7 +3,7 @@
  * ip2asn
  * Maps IP address to as number and related methods.
  *
- * @version    2020-09-21 09:47:00 UTC
+ * @version    2020-09-21 12:59:00 UTC
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2020 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -123,7 +123,7 @@ class ip2asn
       throw new Exception("Illegal value argument ver");
     }
 
-    if (file_exists($filename) && (filemtime($filename) + $this->_get_caching_time()) > time())
+    if (file_exists($filename))
     {
 
       $fileObj = new SplFileObject($filename, 'r');
@@ -269,7 +269,7 @@ class ip2asn
   public function Asn2description($num)
   {
     $num = (integer) $num;
-    return trim(shell_exec("grep -P '^AS". $num ."\ ' ". $this->_asn2name_filename ." | sed 's/^AS[0-9]*[ \t]*//'"));
+    return trim(shell_exec("grep -P '^AS${num}\ ' ". $this->_asn2name_filename ." | sed 's/^AS[0-9]*[ \t]*//'"));
   }
 
 
@@ -290,8 +290,13 @@ class ip2asn
 
     $filename = $this->_get_file_prefix() ."prefixes_v${ver}_${num}.json";
 
-    if (file_exists($filename) && filemtime($filename) + $this->_get_caching_time() > time()) {
-      return json_decode($this->_get_file_contents($filename), true);
+    if (file_exists($filename)) {
+      if ((filemtime($filename) + $this->_get_caching_time()) > time()) {
+        return json_decode($this->_get_file_contents($filename), true);
+      }
+      else {
+        @unlink($filename);
+      }
     }
 
     if ($ver === 4) {
@@ -650,9 +655,11 @@ class ip2asn
     }
     if (!empty($this->cache_time) && is_integer($this->cache_time)) {
       $this->_caching_time = $this->cache_time;
-      return $this->_caching_time;
     }
-    return self::CACHING_TIME_DEFAULT;
+    else {
+      $this->_caching_time = self::CACHING_TIME_DEFAULT;
+    }
+    return $this->_caching_time;
   }
 
 }
