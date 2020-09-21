@@ -89,6 +89,11 @@ function RandomString()
   printf %s "$(openssl rand -base64 13 | tr -cd "[0-9A-Za-z]")"
 }
 
+function get_lcount()
+{
+  printf %s "$(wc -l $1 | cut -d " " -f1)"
+}
+
 # ====================================================================
 
 
@@ -115,6 +120,7 @@ sed -e 's/<[^>]*>//g' $TEMP0 > $TEMP1
 grep -P '^AS\d+[\s\S]+' $TEMP1 > $TEMP2
 
 
+chown www-data:www-data $TEMP2 && chmod 0644 $TEMP2
 mv $TEMP2 $filename
 
 cd ..
@@ -122,7 +128,7 @@ rm -rf $TEMPDIR
 
 if [ -s $filename ]
 then
-  log_write "OK: File $filename exists with $(wc -l $filename | cut -d " " -f1) lines" "1"
+  log_write "OK: File $filename exists with $(get_lcount $filename) lines" "1"
 else
   log_write "CRIT: File $filename not found or empty" "1"
 fi
