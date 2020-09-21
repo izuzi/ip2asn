@@ -4,7 +4,7 @@
 #
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-21 12:49:00 UTC
+# @version    2020-09-21 13:05:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -283,15 +283,15 @@ log_write ">>>> Purging PREFIXES cache ; CACHETIME=${READABLECTM}" "1"
 
 if (( LOG_LEVEL  == 2 ))
 then
-  totalcnt="$(find $DIRCACHEBGP -name "${MODULENAME}_prefixes_v*.json" -type f | wc -l)"
+  totalcnt="$(find $CACHEDIR -name "${MODULENAME}_prefixes_v*.json" -type f | wc -l)"
   log_write "PREFIXES: Found $totalcnt files" "2"
 fi
 
-stale_count="$(find $DIRCACHEBGP -name "${MODULENAME}_prefixes_v*.json" -mmin +"$((CACHETIME/60))" -type f | wc -l)"
+stale_count="$(find $CACHEDIR -name "${MODULENAME}_prefixes_v*.json" -mmin +"$((CACHETIME/60))" -type f | wc -l)"
 
 if (( stale_count > 0 ))
 then
-  find $DIRCACHEBGP -name "${MODULENAME}_prefixes_v*.json" -mmin +"$((CACHETIME/60))" -type f -delete && \
+  find $CACHEDIR -name "${MODULENAME}_prefixes_v*.json" -mmin +"$((CACHETIME/60))" -type f -delete && \
     log_write "PREFIXES: Deleted $stale_count files" "1"
 else
   log_write "PREFIXES: Nothing to delete" "2"
