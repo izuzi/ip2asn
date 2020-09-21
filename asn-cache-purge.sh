@@ -4,7 +4,7 @@
 #
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-21 07:51:00 UTC
+# @version    2020-09-21 10:38:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -52,14 +52,16 @@ LOG_LEVEL="2"
 
 debugLog="${CACHEDIR}/${MODULENAME}_debug.log"
 
+TLIMIT="$(($(date +"%s")-CACHETIME))"
+
 # ====================================================================
 
 function lineExists()
 {
   # lineExists filename string
-  cat "$2" | grep "$1" && \
-    return 1 || \
-    return 0
+  cat "$1" | grep "$2" && \
+    return 0 || \
+    return 1
 }
 
 function milliStopwatch()
@@ -87,31 +89,37 @@ function RandomString()
   printf %s "$(openssl rand -base64 13 | tr -cd "[0-9A-Za-z]")"
 }
 
+function get_lcount()
+{
+  printf %s "$(wc -l $1 | cut -d " " -f1)"
+}
+
 # ====================================================================
 
 ver="4"
 
-# ====================================================================
-# Too many lines?
-
 cachefile="${CACHEDIR}/${MODULENAME}_v${ver}_asdata.cache"
 
-log_write "Purging file $cachefile" "1"
+log_write ">>>> Purging file $cachefile" "1"
 
 randstr="$(RandomString)"
 
-TEMPFILEA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
-TEMPFILEB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
+TEMPA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
+TEMPB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
+
+# ====================================================================
+# Too many lines?
 
 if [ -s $cachefile ]
 then
-  lines="$(wc -l $cachefile | cut -d " " -f1)"
-
+  lines="$(get_lcount $cachefile)"
+  log_write "File has $lines lines" "2"
   if (( lines > 500000 ))
   then
-    tail -n 200000 $cachefile > $TEMPFILEA
-    mv -f $TEMPFILEA $cachefile
-    chmod 0664 $cachefile
+    log_write "Reducing file to 200000 lines" "2"
+    tail -n 200000 $cachefile > $TEMPA
+    chown www-data:www-data $TEMPA && chmod 0644 $TEMPA
+    mv -f $TEMPA $cachefile
   fi
 fi
 
@@ -120,19 +128,21 @@ fi
 
 if [ -s $cachefile ]
 then
-  cp $cachefile $TEMPFILEA
-  tlimit="$(($(date +"%s")-CACHETIME))"
+  deleted="0"
+  cp $cachefile $TEMPA
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    if (( f1 > $tlimit ))
+    if (( f1 > TLIMIT ))
     then
-      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
+      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
+    else
+      deleted="$((deleted+1))"
     fi
-  done < $TEMPFILEA
-
-  mv -f $TEMPFILEB $cachefile
-  chmod 0664 $cachefile
-  rm $TEMPFILEA
+  done < $TEMPA
+  log_write "STALE: Deleted $deleted lines" "2"
+  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+  mv -f $TEMPB $cachefile
+  rm $TEMPA
 fi
 
 # ====================================================================
@@ -140,42 +150,50 @@ fi
 
 if [ -s $cachefile ]
 then
-  cp $cachefile $TEMPFILEA
+  deleted="0"
+  cp $cachefile $TEMPA
+  touch $TEMPB
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    lineExists $TEMPFILEB "|$f3|" && "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
-  done < $TEMPFILEA
-
-  mv -f $TEMPFILEB $cachefile
-  chmod 0664 $cachefile
-  rm $TEMPFILEA
+    if ! lineExists $TEMPB "|$f3|"
+    then
+      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
+    else
+      deleted="$((deleted+1))"
+    fi
+  done < $TEMPA
+  log_write "DUPLICATES: Deleted $deleted lines" "2"
+  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+  mv -f $TEMPB $cachefile
+  rm $TEMPA
 fi
 
 # ====================================================================
 
 ver="6"
 
-# ====================================================================
-# Too many lines?
-
 cachefile="${CACHEDIR}/${MODULENAME}_v${ver}_asdata.cache"
 
-log_write "Purging file $cachefile" "1"
+log_write ">>>> Purging file $cachefile" "1"
 
 randstr="$(RandomString)"
 
-TEMPFILEA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
-TEMPFILEB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
+TEMPA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
+TEMPB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
+
+# ====================================================================
+# Too many lines?
 
 if [ -s $cachefile ]
 then
-  lines="$(wc -l $cachefile | cut -d " " -f1)"
-
+  lines="$(get_lcount $cachefile)"
+  log_write "File has $lines lines" "2"
   if (( lines > 500000 ))
   then
-    tail -n 200000 $cachefile > $TEMPFILEA
-    mv -f $TEMPFILEA $cachefile
-    chmod 0664 $cachefile
+    log_write "Reducing file to 200000 lines" "2"
+    tail -n 200000 $cachefile > $TEMPA
+    chown www-data:www-data $TEMPA && chmod 0644 $TEMPA
+    mv -f $TEMPA $cachefile
   fi
 fi
 
@@ -184,19 +202,21 @@ fi
 
 if [ -s $cachefile ]
 then
-  cp $cachefile $TEMPFILEA
-  tlimit="$(($(date +"%s")-CACHETIME))"
+  deleted="0"
+  cp $cachefile $TEMPA
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    if (( f1 > $tlimit ))
+    if (( f1 > TLIMIT ))
     then
-      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
+      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
+    else
+      deleted="$((deleted+1))"
     fi
-  done < $TEMPFILEA
-
-  mv -f $TEMPFILEB $cachefile
-  chmod 0664 $cachefile
-  rm $TEMPFILEA
+  done < $TEMPA
+  log_write "STALE: Deleted $deleted lines" "2"
+  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+  mv -f $TEMPB $cachefile
+  rm $TEMPA
 fi
 
 # ====================================================================
@@ -204,15 +224,22 @@ fi
 
 if [ -s $cachefile ]
 then
-  cp $cachefile $TEMPFILEA
+  deleted="0"
+  cp $cachefile $TEMPA
+  touch $TEMPB
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    lineExists $TEMPFILEB "|$f3|" && "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
-  done < $TEMPFILEA
-
-  mv -f $TEMPFILEB $cachefile
-  chmod 0664 $cachefile
-  rm $TEMPFILEA
+    if ! lineExists $TEMPB "|$f3|"
+    then
+      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
+    else
+      deleted="$((deleted+1))"
+    fi
+  done < $TEMPA
+  log_write "DUPLICATES: Deleted $deleted lines" "2"
+  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+  mv -f $TEMPB $cachefile
+  rm $TEMPA
 fi
 
 # ====================================================================
