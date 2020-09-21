@@ -3,7 +3,7 @@
  * ip2asn
  * Maps IP address to as number and related methods.
  *
- * @version    2020-09-21 07:51:00 UTC
+ * @version    2020-09-21 09:47:00 UTC
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2020 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -47,8 +47,7 @@ class ip2asn
 
 
   /**
-   * Filename of ASN to name lookup.
-   * (The full name will be cachdir+prefix+suffix.)
+   * Filename suffix of ASN to name lookup.
    * @var string
    */
   const ASN2NAME_FILESUFFIX = 'asn2name.db';
@@ -60,6 +59,13 @@ class ip2asn
    * @var string
    */
   private $_asn2name_filename;
+
+
+  /**
+   * User-specific maximum age of cache files.
+   * @var integer
+   */
+  public $cache_time;
 
 
   /**
@@ -639,7 +645,11 @@ class ip2asn
    */
   private function _get_caching_time()
   {
-    if (!empty($this->_caching_time) && is_integer($this->_caching_time)) {
+    if (!empty($this->_caching_time)) {
+      return $this->_caching_time;
+    }
+    if (!empty($this->cache_time) && is_integer($this->cache_time)) {
+      $this->_caching_time = $this->cache_time;
       return $this->_caching_time;
     }
     return self::CACHING_TIME_DEFAULT;
