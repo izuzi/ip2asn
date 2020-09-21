@@ -3,7 +3,7 @@
  * ip2asn
  * Maps IP address to as number and related methods.
  *
- * @version    2020-09-20 10:51:00 UTC
+ * @version    2020-09-21 07:51:00 UTC
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2020 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -47,6 +47,22 @@ class ip2asn
 
 
   /**
+   * Filename of ASN to name lookup.
+   * (The full name will be cachdir+prefix+suffix.)
+   * @var string
+   */
+  const ASN2NAME_FILESUFFIX = 'asn2name.db';
+
+
+  /**
+   * Filename of ASN to name lookup.
+   * (The full name will be cachdir+prefix+suffix.)
+   * @var string
+   */
+  private $_asn2name_filename;
+
+
+  /**
    * Maximum age of cache files.
    * @var integer
    */
@@ -69,6 +85,7 @@ class ip2asn
     $dir = rtrim($dir, '/');
     $this->_check_cachedir($dir);
     $this->_file_prefix = "$dir/". self::NAME_PREFIX;
+    $this->_asn2name_filename = "$dir/". self::NAME_PREFIX . self::ASN2NAME_FILESUFFIX;
   }
 
 
@@ -94,15 +111,16 @@ class ip2asn
     }
 
     if ($ver == 4 || $ver == 6) {
-      $filename = $this->_get_file_prefix() ."_v${ver}_asdata.cache";
+      $filename = $this->_get_file_prefix() ."v${ver}_asdata.cache";
     }
     else {
       throw new Exception("Illegal value argument ver");
     }
 
-    if (file_exists($filename) && filemtime($filename) + $this->_get_caching_time() > time()) {
+    if (file_exists($filename) && (filemtime($filename) + $this->_get_caching_time()) > time())
+    {
 
-      $fileObj = new SplFileObject($filename, 'r+');
+      $fileObj = new SplFileObject($filename, 'r');
       while (!$fileObj->flock(LOCK_EX)) {
         usleep(1);
       }
@@ -129,33 +147,43 @@ class ip2asn
           }
         }
       }
-
-      $arr = $this->_get_cymru_asn($ip, $ver);
-
-      if (empty($arr)) {
-        $fileObj->flock(LOCK_UN);
-        return array(
-          'as_number'       => '',
-          'as_prefix'       => '',
-          'as_prefix_bin'   => '',
-          'as_country_code' => '',
-          'as_isp'          => '',
-          'as_nic'          => '',
-          'as_alloc'        => '',
-          'as_source'       => 'ip2asn',
-        );
-      }
-
-      if (empty($arr['as_prefix_bin']) || $arr['as_prefix_bin'] == 'NA') {
-        $arr['as_prefix_bin'] = $bin;
-      }
-
-      $str = time().'|'.$arr['as_prefix_bin'].'|'.$arr['as_prefix'].'|'.$arr['as_country_code'].'|'.$arr['as_number'].'|'.$arr['as_isp'].'|'.$arr['as_nic'].'|'.$arr['as_alloc'];
-
-      $fileObj->fseek($fileObj->getSize());
-      $fileObj->fwrite("$str\n");
       $fileObj->flock(LOCK_UN);
     }
+
+    $arr = $this->_get_cymru_asn($ip, $ver);
+
+    if (empty($arr)) {
+      return array(
+        'as_number'       => '',
+        'as_prefix'       => '',
+        'as_prefix_bin'   => '',
+        'as_country_code' => '',
+        'as_isp'          => '',
+        'as_nic'          => '',
+        'as_alloc'        => '',
+        'as_source'       => 'ip2asn',
+      );
+    }
+
+    $fileObj = new SplFileObject($filename, 'w');
+
+    if (empty($arr['as_prefix_bin']) || $arr['as_prefix_bin'] == 'NA') {
+      $arr['as_prefix_bin'] = $bin;
+    }
+
+    $str =
+      time().'|'.
+      $arr['as_prefix_bin'].'|'.
+      $arr['as_prefix'].'|'.
+      $arr['as_country_code'].'|'.
+      $arr['as_number'].'|'.
+      $arr['as_isp'].'|'.
+      $arr['as_nic'].'|'.
+      $arr['as_alloc'];
+
+    $fileObj->fseek($fileObj->getSize());
+    $fileObj->fwrite("$str\n");
+    $fileObj->flock(LOCK_UN);
 
     return $arr;
   }
@@ -168,7 +196,7 @@ class ip2asn
    * @return array
    * @throws \Exception
    */
-  public function _get_cymru_asn($ip, $ver = 0)
+  private function _get_cymru_asn($ip, $ver = 0)
   {
     $arr = array();
 
@@ -234,10 +262,8 @@ class ip2asn
    */
   public function Asn2description($num)
   {
-    if (strpos($num, ' ') !== false) {
-      throw new Exception("Illegal value argument num");
-    }
-    return trim(shell_exec("grep -P '^AS". $num ."\ ' ".FILENAME_AS2NAMEDB." | sed 's/^AS[0-9]*[ \t]*//'"));
+    $num = (integer) $num;
+    return trim(shell_exec("grep -P '^AS". $num ."\ ' ". $this->_asn2name_filename ." | sed 's/^AS[0-9]*[ \t]*//'"));
   }
 
 
@@ -424,9 +450,9 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Returns version of IP.
+   * @param  string
+   * @return integer
    */
   public function _get_ipv($ip)
   {
@@ -435,9 +461,9 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Converts IP address into binary string.
+   * @param  string
+   * @return string
    */
   private function _ip2binstr($ip)
   {
@@ -466,9 +492,9 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Converts cidr prefix into binary string.
+   * @param  string
+   * @return string
    */
   private function _cidr2binprefix($cidr)
   {
@@ -478,9 +504,11 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Matches two binary strings, to be used for determining whether
+   * an address matches a cidr prefix.
+   * @param  string
+   * @param  string
+   * @return boolean
    */
   private function _match_bin_strings($needle, $haystack)
   {
@@ -489,9 +517,9 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Expands compressed IPv6.
+   * @param  string
+   * @return string
    */
   private function _expand_addr_six($addr)
   {
@@ -524,7 +552,9 @@ class ip2asn
   /**
    * Returns the first element before a glue.
    * Eg, "first-second-last" > "first"
-   *
+   * @param  string
+   * @param  string
+   * @return string
    */
   private function _first_before_glue($glue, $str)
   {
@@ -537,7 +567,6 @@ class ip2asn
    * @param  string  $file
    * @param  string  $str
    * @return mixed
-   * @throws \Exception
    */
   private function _put_file_contents($file, $str)
   {
@@ -555,7 +584,6 @@ class ip2asn
    * Retrieves contents of a file
    * @param  string  $file
    * @return string
-   * @throws \Exception
    */
   private function _get_file_contents($file)
   {
@@ -591,8 +619,10 @@ class ip2asn
 
 
   /**
-   *
-   *
+   * Returns file name prefix.
+   * @param  string
+   * @return string
+   * @throws \Exception
    */
   private function _get_file_prefix()
   {
@@ -604,8 +634,8 @@ class ip2asn
 
 
   /**
-   *
-   *
+   * Returns caching time in seconds.
+   * @return integer
    */
   private function _get_caching_time()
   {

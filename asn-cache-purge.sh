@@ -1,11 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
-# IP 2 ASN
-# Maps IP address to ASN.
+# Cache file purging script.
 #
-# @version    0.6 (2017-11-17 19:36:19 GMT)
-# @author     Peter Kahl <peter.kahl@colossalmind.com>
-# @copyright  2015-2017 Peter Kahl
+# This script is part of ip2asn PHP library.
+#
+# @version    2020-09-21 07:51:00 UTC
+# @author     Peter Kahl <https://github.com/peterkahl>
+# @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
 #
 #
@@ -22,156 +23,200 @@
 # limitations under the License.
 #
 
-
-# ====== User configuration (edit as needed) ======
-#
-# Cache time in seconds
-# 180 days
-CACHETIME="15552000"
+# ============= User configuration (edit as needed) ==================
 
 # Cache directory
 CACHEDIR="/srv/bgp"
 
-# ========== Do not edit below this line ==========
+# Cache time in seconds
+CACHETIME="1209600" # 14 days
 
 
+# ================= Do not edit below this line ======================
 
-###################################################
-# lineExists filename string
+# Disable unicode
+LC_ALL=C
+LANG=C
 
-lineExists()
+TSTARTM="$(date +"%s.%N")"
+
+MODULENAME="ip2asn"
+
+SUBNAME="purger"
+
+# Whether to provide debug info?
+# 0 ..... only errors
+# 1 ..... medium
+# 2 ..... every useless detail
+LOG_LEVEL="2"
+
+debugLog="${CACHEDIR}/${MODULENAME}_debug.log"
+
+# ====================================================================
+
+function lineExists()
 {
-  RESULT=0
-  TEST=$(cat "$1" | grep "$2")
-  if [ -n "$TEST" ]; then
-    RESULT=1
-  fi
-  return $RESULT
+  # lineExists filename string
+  cat "$2" | grep "$1" && \
+    return 1 || \
+    return 0
 }
 
+function milliStopwatch()
+{
+  local intval="$(echo "$(date +"%s.%N")-$1" | bc -l)"
+  local seconds
+  local ninechars
+  IFS="." read -r seconds ninechars <<< "$intval"
+  (( seconds < 1 )) && \
+    printf %s "$(echo "$ninechars" | cut -b1-3 | sed 's/^00*//').$(echo "$ninechars" | cut -b4-5)ms" || \
+    printf %s "${seconds}.$(echo "$ninechars" | cut -b1-2)s"
+}
 
-###################################################
-# Too many lines
+function log_write()
+{
+  # Usage:
+  # $ log_write <string> <severity>
+  local string="$1"
+  local severity="$2"
+  (( severity <= LOG_LEVEL )) && echo "$(date +"%Y-%m-%d %H:%M:%S") $MODULENAME/$SUBNAME[$BASHPID]: $string" >> $debugLog
+}
 
-ASNCACHE="$CACHEDIR/ASN4-CACHE.db"
-TEMPFILEA="$CACHEDIR/ASN4-A.tmp"
-TEMPFILEB="$CACHEDIR/ASN4-B.tmp"
+function RandomString()
+{
+  printf %s "$(openssl rand -base64 13 | tr -cd "[0-9A-Za-z]")"
+}
 
-if [[ -e $ASNCACHE && -s $ASNCACHE ]]; then
-  ACTUALLINES=$(cat $ASNCACHE | wc -l)
-  if [[ $ACTUALLINES > "500000" ]]; then
-    tail -n 200000 $ASNCACHE > $TEMPFILEA
-    mv -f $TEMPFILEA $ASNCACHE
-    chmod 0664 $ASNCACHE
+# ====================================================================
+
+ver="4"
+
+# ====================================================================
+# Too many lines?
+
+cachefile="${CACHEDIR}/${MODULENAME}_v${ver}_asdata.cache"
+
+log_write "Purging file $cachefile" "1"
+
+randstr="$(RandomString)"
+
+TEMPFILEA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
+TEMPFILEB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
+
+if [ -s $cachefile ]
+then
+  lines="$(wc -l $cachefile | cut -d " " -f1)"
+
+  if (( lines > 500000 ))
+  then
+    tail -n 200000 $cachefile > $TEMPFILEA
+    mv -f $TEMPFILEA $cachefile
+    chmod 0664 $cachefile
   fi
 fi
 
-###################################################
-# Purge outdated
+# ====================================================================
+# Remove outdated lines
 
-if [[ -e $ASNCACHE && -s $ASNCACHE ]]; then
-
-  cp $ASNCACHE $TEMPFILEA
-  touch $TEMPFILEB
-
-  TIMELIM=$(expr $(date +%s) - $CACHETIME)
-
+if [ -s $cachefile ]
+then
+  cp $cachefile $TEMPFILEA
+  tlimit="$(($(date +"%s")-CACHETIME))"
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    if [[ $f1 > $TIMELIM ]]; then
-      # Re-create the cache file
+    if (( f1 > $tlimit ))
+    then
       echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
     fi
   done < $TEMPFILEA
 
-  mv -f $TEMPFILEB $ASNCACHE
-  chmod 0664 $ASNCACHE
+  mv -f $TEMPFILEB $cachefile
+  chmod 0664 $cachefile
   rm $TEMPFILEA
 fi
 
-###################################################
-# Purge duplicate lines
+# ====================================================================
+# Remove duplicate lines
 
-if [[ -e $ASNCACHE && -s $ASNCACHE ]]; then
-
-  cp $ASNCACHE $TEMPFILEA
-  touch $TEMPFILEB
-
+if [ -s $cachefile ]
+then
+  cp $cachefile $TEMPFILEA
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    lineExists $TEMPFILEB "|$f3|"
-    if [[ $? == "0" ]]; then
-      # Re-create the cache file
-      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
-    fi
+    lineExists $TEMPFILEB "|$f3|" && "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
   done < $TEMPFILEA
 
-  mv -f $TEMPFILEB $ASNCACHE
-  chmod 0664 $ASNCACHE
+  mv -f $TEMPFILEB $cachefile
+  chmod 0664 $cachefile
   rm $TEMPFILEA
 fi
 
-################################################### ###################################################
-# Too many lines
+# ====================================================================
 
-ASNCACHE="$CACHEDIR/ASN6-CACHE.db"
-TEMPFILEA="$CACHEDIR/ASN6-A.tmp"
-TEMPFILEB="$CACHEDIR/ASN6-B.tmp"
+ver="6"
 
-if [[ -e $ASNCACHE && -s $ASNCACHE ]]; then
-  ACTUALLINES=$(cat $ASNCACHE | wc -l)
-  if [[ $ACTUALLINES > "500000" ]]; then
-    tail -n 200000 $ASNCACHE > $TEMPFILEA
-    mv -f $TEMPFILEA $ASNCACHE
-    chmod 0664 $ASNCACHE
+# ====================================================================
+# Too many lines?
+
+cachefile="${CACHEDIR}/${MODULENAME}_v${ver}_asdata.cache"
+
+log_write "Purging file $cachefile" "1"
+
+randstr="$(RandomString)"
+
+TEMPFILEA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
+TEMPFILEB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
+
+if [ -s $cachefile ]
+then
+  lines="$(wc -l $cachefile | cut -d " " -f1)"
+
+  if (( lines > 500000 ))
+  then
+    tail -n 200000 $cachefile > $TEMPFILEA
+    mv -f $TEMPFILEA $cachefile
+    chmod 0664 $cachefile
   fi
 fi
 
-###################################################
-# Purge outdated
+# ====================================================================
+# Remove outdated lines
 
-if [[ -e $ASNCACHE && -s $ASNCACHE ]]; then
-
-  cp $ASNCACHE $TEMPFILEA
-  touch $TEMPFILEB
-
-  TIMELIM=$(expr $(date +%s) - $CACHETIME)
-
+if [ -s $cachefile ]
+then
+  cp $cachefile $TEMPFILEA
+  tlimit="$(($(date +"%s")-CACHETIME))"
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    if [[ $f1 > $TIMELIM ]]; then
-      # Re-create the cache file
+    if (( f1 > $tlimit ))
+    then
       echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
     fi
   done < $TEMPFILEA
 
-  mv -f $TEMPFILEB $ASNCACHE
-  chmod 0664 $ASNCACHE
+  mv -f $TEMPFILEB $cachefile
+  chmod 0664 $cachefile
   rm $TEMPFILEA
 fi
 
-###################################################
-# Purge duplicate lines
+# ====================================================================
+# Remove duplicate lines
 
-if [[ -e $ASNCACHE && -s $ASNCACHE ]]; then
-
-  cp $ASNCACHE $TEMPFILEA
-  touch $TEMPFILEB
-
+if [ -s $cachefile ]
+then
+  cp $cachefile $TEMPFILEA
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    lineExists $TEMPFILEB "|$f3|"
-    if [[ $? == "0" ]]; then
-      # Re-create the cache file
-      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
-    fi
+    lineExists $TEMPFILEB "|$f3|" && "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPFILEB
   done < $TEMPFILEA
 
-  mv -f $TEMPFILEB $ASNCACHE
-  chmod 0664 $ASNCACHE
+  mv -f $TEMPFILEB $cachefile
+  chmod 0664 $cachefile
   rm $TEMPFILEA
 fi
 
-###################################################
+# ====================================================================
+
+log_write "Process completed in $(milliStopwatch $TSTARTM)" "2"
 
 exit 0
