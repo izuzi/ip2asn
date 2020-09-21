@@ -63,13 +63,6 @@ class ip2asn
 
 
   /**
-   * Maximum age of cache files (user specific).
-   * @var integer
-   */
-  public $cache_time;
-
-
-  /**
    * Maximum age of cache files.
    * @var integer
    */
@@ -457,9 +450,9 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Returns version of IP.
+   * @param  string
+   * @return integer
    */
   public function _get_ipv($ip)
   {
@@ -468,9 +461,9 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Converts IP address into binary string.
+   * @param  string
+   * @return string
    */
   private function _ip2binstr($ip)
   {
@@ -499,9 +492,9 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Converts cidr prefix into binary string.
+   * @param  string
+   * @return string
    */
   private function _cidr2binprefix($cidr)
   {
@@ -511,9 +504,11 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Matches two binary strings, to be used for determining whether
+   * an address matches a cidr prefix.
+   * @param  string
+   * @param  string
+   * @return boolean
    */
   private function _match_bin_strings($needle, $haystack)
   {
@@ -522,9 +517,9 @@ class ip2asn
 
 
   /**
-   *
-   *
-   *
+   * Expands compressed IPv6.
+   * @param  string
+   * @return string
    */
   private function _expand_addr_six($addr)
   {
@@ -557,7 +552,9 @@ class ip2asn
   /**
    * Returns the first element before a glue.
    * Eg, "first-second-last" > "first"
-   *
+   * @param  string
+   * @param  string
+   * @return string
    */
   private function _first_before_glue($glue, $str)
   {
@@ -570,7 +567,6 @@ class ip2asn
    * @param  string  $file
    * @param  string  $str
    * @return mixed
-   * @throws \Exception
    */
   private function _put_file_contents($file, $str)
   {
@@ -588,7 +584,6 @@ class ip2asn
    * Retrieves contents of a file
    * @param  string  $file
    * @return string
-   * @throws \Exception
    */
   private function _get_file_contents($file)
   {
@@ -624,8 +619,10 @@ class ip2asn
 
 
   /**
-   *
-   *
+   * Returns file name prefix.
+   * @param  string
+   * @return string
+   * @throws \Exception
    */
   private function _get_file_prefix()
   {
@@ -637,16 +634,12 @@ class ip2asn
 
 
   /**
-   *
-   *
+   * Returns caching time in seconds.
+   * @return integer
    */
   private function _get_caching_time()
   {
-    if (!empty($this->_caching_time)) {
-      return $this->_caching_time;
-    }
-    if (!empty($this->cache_time) && is_integer($this->cache_time)) {
-      $this->_caching_time = $this->cache_time;
+    if (!empty($this->_caching_time) && is_integer($this->_caching_time)) {
       return $this->_caching_time;
     }
     return self::CACHING_TIME_DEFAULT;

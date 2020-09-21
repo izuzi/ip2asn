@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 #
-# AS number to ISP/ORG database downloader script
+# AS number to ISP/ORG database downloader script.
+#
 # This script is part of ip2asn PHP library.
 #
 # @version    2020-09-21 07:51:00 UTC
-# @author     Peter Kahl <peter.kahl@colossalmind.com>
+# @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
 #
@@ -40,6 +41,8 @@ LANG=C
 TSTARTSEC="$(date +"%s")"
 
 MODULENAME="ip2asn"
+
+SUBNAME="updater"
 
 filename="${CACHEDIR}/${MODULENAME}_asn2name.db"
 
@@ -78,11 +81,7 @@ function log_write()
   # $ log_write <string> <severity>
   local string="$1"
   local severity="$2"
-
-  if (( severity <= LOG_LEVEL ))
-  then
-    echo "$(date +"%Y-%m-%d %H:%M:%S") $MODULENAME [$BASHPID]: $string" >> $debugLog
-  fi
+  (( severity <= LOG_LEVEL )) && echo "$(date +"%Y-%m-%d %H:%M:%S") $MODULENAME/$SUBNAME[$BASHPID]: $string" >> $debugLog
 }
 
 function RandomString()
