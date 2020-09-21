@@ -27,7 +27,7 @@ Essential component of this library are 2 shell scripts.
 
 Script `asn-cache-purge.sh` is used to purge cached data. You may want to run this script hourly using crontab. (Edit parameters as needed.)
 
-Script `update-asn2name.sh` is used to download database file for mapping AS numbers to their names. You may want to run this script once daily using crontab. (Edit parameters as needed.)
+Script `update-asn2name.sh` is used to download database file for mapping AS numbers to their names. You may want to run this script (not more than) once daily using crontab. (Edit parameters as needed.)
 
 ## Usage
 
