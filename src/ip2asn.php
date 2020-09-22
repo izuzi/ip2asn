@@ -1,13 +1,13 @@
 <?php
 /**
  * ip2asn
- * Maps IP address to as number and related methods.
+ * Maps IP address to as number; prefixes for given AS and other
+ * related methods.
  *
- * @version    2020-09-22 06:11:00 UTC
+ * @version    2020-09-22 18:36:00 UTC
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2020 Peter Kahl
  * @license    Apache License, Version 2.0
- *
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,8 +30,6 @@ use \Exception;
 
 class ip2asn
 {
-
-
   /**
    * Name of this library as first part of file name
    * @var string
@@ -76,6 +74,13 @@ class ip2asn
 
 
   /**
+   * Cache directory.
+   * @var string
+   */
+  private $_cachedir;
+
+
+  /**
    * Default value of maximum age of cache files.
    * @var integer
    */
@@ -84,25 +89,57 @@ class ip2asn
 
   /**
    * Constructor
-   * @param  string ... cache directory
+   * @param  string
+   * @throws \Exception
    */
-  public function __construct($dir='')
+  public function __construct($dir)
   {
-    $dir = rtrim($dir, '/');
     $this->_check_cachedir($dir);
-    $this->_file_prefix = "$dir/". self::NAME_PREFIX;
-    $this->_asn2name_filename = "$dir/". self::NAME_PREFIX . self::ASN2NAME_FILESUFFIX;
+    $this->_file_prefix = $this->_get_cachedir().'/'.self::NAME_PREFIX;
+    $this->_asn2name_filename = $this->_get_cachedir().'/'.self::NAME_PREFIX.self::ASN2NAME_FILESUFFIX;
   }
 
 
   /**
-   * Simple IP address validation, both v4 and v6.
-   *
-   *
+   * Checks whether directory is defined & exists.
+   * @param  string
+   * @throws \Exception
    */
-  private function _valid_ip($addr)
+  private function _check_cachedir($dir)
   {
-    return (preg_match('/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|([a-f0-9]{4}:[a-f0-9:]{3,34}))$/i', $addr)) ? true: false;
+    $dir = rtrim($dir, '/');
+    if (empty($dir) || strpos($dir, "\0") !== false) {
+      throw new Exception("Illegal value argument dir");
+    }
+    if (!file_exists($dir) || !is_dir($dir)) {
+      throw new Exception("Valid cache directory must be specified");
+    }
+    $this->_cachedir = $dir;
+  }
+
+
+  /**
+   * Returns cache directory.
+   * @return string
+   */
+  private function _get_cachedir()
+  {
+    return $this->_cachedir;
+  }
+
+
+  /**
+   * Returns file name prefix.
+   * @param  string
+   * @return string
+   * @throws \Exception
+   */
+  private function _get_file_prefix()
+  {
+    if (!empty($this->_file_prefix)) {
+      return $this->_file_prefix;
+    }
+    throw new Exception("Property _file_prefix cannot be empty");
   }
 
 
@@ -115,14 +152,10 @@ class ip2asn
   public function getAsn($addr)
   {
     if (!is_string($addr) || !$this->_valid_ip($addr)) throw new Exception("Illegal type/value argument addr");
-
     $ver = $this->_get_ipv($addr);
     $bin = $this->_ip2binstr($addr, $ver);
-
-    $file = $this->_get_file_prefix() ."v${ver}_asdata.cache";
-
+    $file = $this->_get_file_prefix()."v${ver}_asdata.cache";
     $arr = array();
-
     if (file_exists($file))
     {
       $fileObj = new SplFileObject($file, 'r');
@@ -133,22 +166,15 @@ class ip2asn
       {
         $line = $fileObj->fgets();
         if (strpos($line, '|') !== false) {
+          $found = array();
           $found = explode('|', trim($line));
           if ($this->_match_bin_strings($bin, $found[1])) {
             if (strpos($num, ' ') !== false) {
               $num = $this->_first_before_glue(' ', $num);
             }
             $fileObj->flock(LOCK_UN);
-            return array(
-              'as_prefix_bin'   => $found[1],
-              'as_prefix'       => $found[2],
-              'as_country_code' => $found[3],
-              'as_number'       => $found[4],
-              'as_isp'          => $found[5],
-              'as_nic'          => $found[6],
-              'as_alloc'        => $found[7],
-              'as_source'       => 'ip2asn',
-            );
+            $found[] = 'ip2asn';
+            return $this->_make_result_array($found);
           }
         }
       }
@@ -159,41 +185,41 @@ class ip2asn
     $arr = $this->_get_cymru_asn($addr, $ver);
 
     if (empty($arr)) {
-      return array(
-        'as_prefix_bin'   => '',
-        'as_prefix'       => '',
-        'as_country_code' => '',
-        'as_number'       => '',
-        'as_isp'          => '',
-        'as_nic'          => '',
-        'as_alloc'        => '',
-        'as_source'       => 'ip2asn',
+      $values = array(
+        0 => time(),
+        1 => '',
+        2 => '',
+        3 => '',
+        4 => '',
+        5 => '',
+        6 => '',
+        7 => '',
+        8 => 'ip2asn',
       );
+      return $this->_make_result_array($values);
     }
 
-    $fileObj = new SplFileObject($file, 'a');
+    $values = array(
+      0 => time(),
+      1 => $this->_cidr2binprefix(trim($arr[1])),
+      2 => trim($arr[1]),
+      3 => trim($arr[2]),
+      4 => trim($arr[0]),
+      5 => $this->Asn2description(trim($arr[0])),
+      6 => strtoupper(trim($arr[3])),
+      7 => trim($arr[4]),
+    );
 
+    $fileObj = new SplFileObject($file, 'a');
     while (!$fileObj->flock(LOCK_EX)) {
       usleep(1);
     }
-
-    if (empty($arr['as_prefix_bin']) || $arr['as_prefix_bin'] == 'NA') $arr['as_prefix_bin'] = $bin;
-
-    $str =
-      time().'|'.
-      $arr['as_prefix_bin'].'|'.
-      $arr['as_prefix'].'|'.
-      $arr['as_country_code'].'|'.
-      $arr['as_number'].'|'.
-      $arr['as_isp'].'|'.
-      $arr['as_nic'].'|'.
-      $arr['as_alloc']
-    ;
-
+    $str = implode('|', $values);
     $fileObj->fwrite("$str\n");
     $fileObj->flock(LOCK_UN);
 
-    return $arr;
+    $values[8] = 'ip2asn';
+    return $this->_make_result_array($values);
   }
 
 
@@ -207,41 +233,17 @@ class ip2asn
   private function _get_cymru_asn($addr, $ver)
   {
     $arr = array();
-
     switch ($ver) {
     case 4:
-      exec('dig +short '. $this->_get_rev_addr_four($addr) .'.origin.asn.cymru.com TXT', $arr); break;
+      exec('dig +short '.$this->_get_rev_addr_four($addr).'.origin.asn.cymru.com TXT', $arr); break;
     case 6:
-      exec('dig +short '. $this->_get_rev_addr_six($addr) .'.origin6.asn.cymru.com TXT', $arr); break;
+      exec('dig +short '.$this->_get_rev_addr_six($addr) .'.origin6.asn.cymru.com TXT', $arr); break;
     }
-
     if (empty($arr)) return array();
-
     $count = count($arr);
-
-    list($num, $prefix, $code, $nic, $alloc) = explode('|', trim($arr[$count-1], " \"\t\n\r\0\x0B"));
-
-    $num    = trim($num);
-    $prefix = trim($prefix);
-    $nic    = trim($nic);
-    $alloc  = trim($alloc);
-
-    if ($prefix == 'NA') $prefixBin = 'NA'; else $prefixBin = $this->_cidr2binprefix($prefix, $ver);
-
-    if (strpos($num, ' ') !== false) $num = $this->_first_before_glue(' ', $num);
-
-    if (empty($alloc)) $alloc = 'NA';
-
-    return array(
-      'as_number'       => trim($num),
-      'as_prefix'       => $prefix,
-      'as_prefix_bin'   => $prefixBin,
-      'as_country_code' => trim($code),
-      'as_isp'          => $this->Asn2description($num),
-      'as_nic'          => strtoupper($nic),
-      'as_alloc'        => $alloc,
-      'as_source'       => 'ip2asn',
-    );
+    $new = explode('|', trim($arr[$count-1], " \"\t\n\r\0\x0B"));
+    $new = array_filter($new, 'trim');
+    return $new;
   }
 
 
@@ -253,7 +255,7 @@ class ip2asn
   public function Asn2description($num)
   {
     $num = (integer) $num;
-    return trim(shell_exec("grep -P '^AS${num}\ ' ". $this->_asn2name_filename ." | sed 's/^AS[0-9]*[ \t]*//'"));
+    return trim(shell_exec("grep -P '^AS${num}\ ' ".$this->_asn2name_filename." | sed 's/^AS[0-9]*[ \t]*//'"));
   }
 
 
@@ -265,12 +267,12 @@ class ip2asn
    */
   public function Asn2prefix($num, $ver)
   {
-    if (!is_integer($num) || $num < 1) throw new Exception("Illegal type/value argument num");
+    $num = (integer) $num;
+    if ($num < 1) throw new Exception("Illegal value argument num");
 
     if (!is_integer($ver) || ($ver !== 4 && $ver !== 6)) throw new Exception("Illegal type/value argument ver");
 
-    $file = $this->_get_file_prefix() ."prefixes_v${ver}_${num}.json";
-
+    $file = $this->_get_file_prefix()."prefixes_v${ver}_${num}.json";
     if (file_exists($file)) {
       if ((filemtime($file) + $this->_get_caching_time()) > time()) {
         return json_decode($this->_get_file_contents($file), true);
@@ -286,37 +288,61 @@ class ip2asn
     }
 
     if (empty($arr) || count($arr) == 1) return array();
-
     array_shift($arr); # Remove the first element
     array_pop($arr);   # Remove the last element
-
     $new = array();
-
     foreach ($arr as $key => $val) {
       if (strpos($val, ' ') !== false) {
         $tmparr = explode(' ', $val);
-        foreach ($tmparr as $nk => $cidr) {
-          if ($this->_valid_AnyCidr($cidr, $ver)) {
-            $new[] = $cidr;
-          }
+        foreach ($tmparr as $cidr) {
+          if ($this->_valid_AnyCidr($cidr, $ver)) $new[] = $cidr;
         }
       }
     }
     unset($arr);
-
     $new = array_unique($new);
-
     switch ($ver) {
     case 4:
       natsort($new); break;
     case 6:
       $new = $this->_sort_cidr_array($new); break;
     }
-
     $new = array_values($new);
-
     $this->_put_file_contents($file, json_encode($new, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
     return $new;
+  }
+
+
+  /**
+   * Simple IP address validation, both v4 and v6.
+   * @param  string
+   * @return boolean
+   */
+  private function _valid_ip($addr)
+  {
+    return (preg_match('/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|([a-f0-9]{4}:[a-f0-9:]{3,34}))$/i', $addr)) ? true: false;
+  }
+
+
+  /**
+   * Populates the result array with values.
+   * @param  array
+   * @return array
+   */
+  private static function _make_result_array($values)
+  {
+    $keys = array(
+      'as_timestamp',
+      'as_prefix_bin',
+      'as_prefix',
+      'as_country_code',
+      'as_number',
+      'as_isp',
+      'as_nic',
+      'as_alloc',
+      'as_source',
+    );
+    return array_combine($keys, $values);
   }
 
 
@@ -383,11 +409,11 @@ class ip2asn
     if (strpos($cidr, '/') === false) return false;
     switch ($ver) {
     case 4:
-      return $this->_valid_cidr_four();
+      return $this->_valid_cidr4($cidr);
     case 6:
-      return $this->_valid_cidr_six();
+      return $this->_valid_cidr6($cidr);
     default:
-      throw new Exception("Illegal value argument $ver");
+      throw new Exception("Illegal value argument ver");
     }
   }
 
@@ -397,7 +423,7 @@ class ip2asn
    * @param  string
    * @return boolean
    */
-  private function _valid_cidr_four($cidr)
+  private function _valid_cidr4($cidr)
   {
     if (strpos($cidr, '/') !== false) {
       list($addr, $bits) = explode('/', $cidr);
@@ -414,7 +440,7 @@ class ip2asn
    * @param  string
    * @return boolean
    */
-  private function _valid_cidr_six($cidr)
+  private function _valid_cidr6($cidr)
   {
     if (strpos($cidr, '/') !== false) {
       list($addr, $bits) = explode('/', $cidr);
@@ -455,7 +481,7 @@ class ip2asn
    * @param  string
    * @return integer
    */
-  public function _get_ipv($addr)
+  private function _get_ipv($addr)
   {
     return (strpos($addr, ':') === false) ? 4 : 6;
   }
@@ -599,37 +625,6 @@ class ip2asn
     $str = $fileObj->fread($size);
     $fileObj->flock(LOCK_UN);
     return $str;
-  }
-
-
-  /**
-   * Checks whether cache directory is defined & exists.
-   * @param  string
-   * @throws \Exception
-   */
-  private function _check_cachedir($dir)
-  {
-    if (empty($dir)) {
-      throw new Exception("Illegal value argument dir");
-    }
-    if (!file_exists($dir) || !is_dir($dir)) {
-      throw new Exception("Directory $dir does not exist or not a directory");
-    }
-  }
-
-
-  /**
-   * Returns file name prefix.
-   * @param  string
-   * @return string
-   * @throws \Exception
-   */
-  private function _get_file_prefix()
-  {
-    if (!empty($this->_file_prefix)) {
-      return $this->_file_prefix;
-    }
-    throw new Exception("Property _file_prefix cannot be empty");
   }
 
 
