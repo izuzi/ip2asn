@@ -169,9 +169,6 @@ class ip2asn
           $found = array();
           $found = explode('|', trim($line));
           if ($this->_match_bin_strings($bin, $found[1])) {
-            if (strpos($num, ' ') !== false) {
-              $num = $this->_first_before_glue(' ', $num);
-            }
             $fileObj->flock(LOCK_UN);
             $found[] = 'ip2asn';
             return $this->_make_result_array($found);
@@ -201,13 +198,13 @@ class ip2asn
 
     $values = array(
       0 => time(),
-      1 => $this->_cidr2binprefix(trim($arr[1])),
-      2 => trim($arr[1]),
-      3 => trim($arr[2]),
-      4 => trim($arr[0]),
-      5 => $this->Asn2description(trim($arr[0])),
-      6 => strtoupper(trim($arr[3])),
-      7 => trim($arr[4]),
+      1 => $this->_cidr2binprefix($arr[1]),
+      2 => $arr[1],
+      3 => $arr[2],
+      4 => $arr[0],
+      5 => $this->Asn2description($arr[0]),
+      6 => strtoupper($arr[3]),
+      7 => $arr[4],
     );
 
     $fileObj = new SplFileObject($file, 'a');
@@ -237,13 +234,12 @@ class ip2asn
     case 4:
       exec('dig +short '.$this->_get_rev_addr_four($addr).'.origin.asn.cymru.com TXT', $arr); break;
     case 6:
-      exec('dig +short '.$this->_get_rev_addr_six($addr) .'.origin6.asn.cymru.com TXT', $arr); break;
+      exec('dig +short '.$this->_get_rev_addr_six($addr).'.origin6.asn.cymru.com TXT', $arr); break;
     }
     if (empty($arr)) return array();
     $count = count($arr);
     $new = explode('|', trim($arr[$count-1], " \"\t\n\r\0\x0B"));
-    $new = array_filter($new, 'trim');
-    return $new;
+    return array_map('trim', $new);
   }
 
 
@@ -291,7 +287,7 @@ class ip2asn
     array_shift($arr); # Remove the first element
     array_pop($arr);   # Remove the last element
     $new = array();
-    foreach ($arr as $key => $val) {
+    foreach ($arr as $val) {
       if (strpos($val, ' ') !== false) {
         $tmparr = explode(' ', $val);
         foreach ($tmparr as $cidr) {
