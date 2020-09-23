@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 #
 # Cache file purging script.
-#
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-21 13:05:00 UTC
+# @version    2020-09-23 12:01:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
-#
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +21,11 @@
 # limitations under the License.
 #
 
-# ============= User configuration (edit as needed) ==================
+# Disable unicode
+LC_ALL=C
+LANG=C
+
+TSTARTM="$(date +"%s.%N")"
 
 # Cache directory
 CACHEDIR="/srv/bgp"
@@ -35,14 +37,6 @@ CACHETIME="1209600" # 14 days
 MAX_LINES="500000"
 
 REDUCETO_LINES="100000"
-
-# ================= Do not edit below this line ======================
-
-# Disable unicode
-LC_ALL=C
-LANG=C
-
-TSTARTM="$(date +"%s.%N")"
 
 MODULENAME="ip2asn"
 
@@ -130,22 +124,26 @@ randstr="$(RandomString)"
 TEMPA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
 TEMPB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
 
+if [ -s $cachefile ]
+then
+  lines="$(get_lcount $cachefile)"
+  log_write "File has $lines lines" "2"
+fi
+
 # ====================================================================
 # Too many lines?
 
 if [ -s $cachefile ]
 then
-  lines="$(get_lcount $cachefile)"
-  log_write "File has $lines lines" "2"
   if (( lines > MAX_LINES ))
   then
-    log_write "Reducing file to $REDUCETO_LINES lines" "1"
+    log_write "TOOMANY: Reducing file to $REDUCETO_LINES lines" "1"
     tail -n "$REDUCETO_LINES" $cachefile > $TEMPA
     chown www-data:www-data $TEMPA && chmod 0644 $TEMPA
     mv $TEMPA $cachefile
   fi
 else
-  log_write "File not found or empty" "2"
+  log_write "TOOMANY: File not found or empty" "2"
 fi
 
 # ====================================================================
@@ -154,26 +152,31 @@ fi
 if [ -s $cachefile ]
 then
   deleted="0"
-  cp $cachefile $TEMPA
-  while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
-  do
-    if (( f1 > TLIMIT ))
-    then
-      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
-    else
-      deleted="$((deleted+1))"
-    fi
-  done < $TEMPA
+  oldest="$(head -n 1 $cachefile | cut -d "|" -f1)"
+  if (( oldest <= LIMIT ))
+  then
+    cp $cachefile $TEMPA
+    while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
+    do
+      if (( f1 > TLIMIT ))
+      then
+        echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
+      else
+        deleted="$((deleted+1))"
+      fi
+    done < $TEMPA
+    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+    mv $TEMPB $cachefile
+    rm $TEMPA
+  fi
   log_write "STALE: Deleted $deleted lines" "1"
-  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-  mv $TEMPB $cachefile
-  rm $TEMPA
 else
-  log_write "File not found or empty" "2"
+  log_write "STALE: File not found or empty" "2"
 fi
 
 # ====================================================================
 # Remove duplicate lines
+# 1600800721|1010101001101010001|170.106.32.0/19|SG|132203|TENCENT-NET-AP-CN Tencent Building, Kejizhongyi Avenue, CN|APNIC|1994-03-25
 
 if [ -s $cachefile ]
 then
@@ -182,7 +185,7 @@ then
   touch $TEMPB
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    if ! lineExists $TEMPB "|$f3|"
+    if ! lineExists $TEMPB "|$f2|"
     then
       echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
     else
@@ -194,7 +197,7 @@ then
   mv $TEMPB $cachefile
   rm $TEMPA
 else
-  log_write "File not found or empty" "2"
+  log_write "DUPLICATES: File not found or empty" "2"
 fi
 
 # ====================================================================
@@ -210,22 +213,26 @@ randstr="$(RandomString)"
 TEMPA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
 TEMPB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
 
+if [ -s $cachefile ]
+then
+  lines="$(get_lcount $cachefile)"
+  log_write "File has $lines lines" "2"
+fi
+
 # ====================================================================
 # Too many lines?
 
 if [ -s $cachefile ]
 then
-  lines="$(get_lcount $cachefile)"
-  log_write "File has $lines lines" "2"
   if (( lines > MAX_LINES ))
   then
-    log_write "Reducing file to $REDUCETO_LINES lines" "1"
+    log_write "TOOMANY: Reducing file to $REDUCETO_LINES lines" "1"
     tail -n "$REDUCETO_LINES" $cachefile > $TEMPA
     chown www-data:www-data $TEMPA && chmod 0644 $TEMPA
     mv $TEMPA $cachefile
   fi
 else
-  log_write "File not found or empty" "2"
+  log_write "TOOMANY: File not found or empty" "2"
 fi
 
 # ====================================================================
@@ -234,22 +241,26 @@ fi
 if [ -s $cachefile ]
 then
   deleted="0"
-  cp $cachefile $TEMPA
-  while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
-  do
-    if (( f1 > TLIMIT ))
-    then
-      echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
-    else
-      deleted="$((deleted+1))"
-    fi
-  done < $TEMPA
+  oldest="$(head -n 1 $cachefile | cut -d "|" -f1)"
+  if (( oldest <= LIMIT ))
+  then
+    cp $cachefile $TEMPA
+    while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
+    do
+      if (( f1 > TLIMIT ))
+      then
+        echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
+      else
+        deleted="$((deleted+1))"
+      fi
+    done < $TEMPA
+    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+    mv $TEMPB $cachefile
+    rm $TEMPA
+  fi
   log_write "STALE: Deleted $deleted lines" "1"
-  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-  mv $TEMPB $cachefile
-  rm $TEMPA
 else
-  log_write "File not found or empty" "2"
+  log_write "STALE: File not found or empty" "2"
 fi
 
 # ====================================================================
@@ -262,7 +273,7 @@ then
   touch $TEMPB
   while IFS='|' read -r f1 f2 f3 f4 f5 f6 f7 f8
   do
-    if ! lineExists $TEMPB "|$f3|"
+    if ! lineExists $TEMPB "|$f2|"
     then
       echo "$f1|$f2|$f3|$f4|$f5|$f6|$f7|$f8" >> $TEMPB
     else
@@ -274,12 +285,12 @@ then
   mv $TEMPB $cachefile
   rm $TEMPA
 else
-  log_write "File not found or empty" "2"
+  log_write "DUPLICATES: File not found or empty" "2"
 fi
 
 # ====================================================================
 
-log_write ">>>> Purging PREFIXES cache ; CACHETIME=${READABLECTM}" "1"
+log_write ">>>> Purging files ${CACHEDIR}/${MODULENAME}_prefixes_v*.json ; CACHETIME=${READABLECTM}" "1"
 
 if (( LOG_LEVEL  == 2 ))
 then

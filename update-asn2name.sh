@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 #
 # AS number to ISP/ORG database downloader script.
-#
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-21 12:49:00 UTC
+# @version    2020-09-23 12:01:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
-#
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,22 +21,17 @@
 # limitations under the License.
 #
 
-# ============= User configuration (edit as needed) ==================
+# Disable unicode
+LC_ALL=C
+LANG=C
+
+TSTARTSEC="$(date +"%s")"
 
 # Cache directory
 CACHEDIR="/srv/bgp"
 
 #SOURCEURL="https://bgp.potaroo.net/cidr/autnums.html"
 SOURCEURL="https://www.cidr-report.org/as2.0/autnums.html"
-
-
-# ================= Do not edit below this line ======================
-
-# Disable unicode
-LC_ALL=C
-LANG=C
-
-TSTARTSEC="$(date +"%s")"
 
 MODULENAME="ip2asn"
 
@@ -54,7 +47,7 @@ LOG_LEVEL="2"
 
 debugLog="${CACHEDIR}/${MODULENAME}_debug.log"
 
-UAGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:80.0) Gecko/20100101 Firefox/80.0"
+UAGENT="Mozilla/5.0 (ip2asn-updater; +https://github.com/peterkahl/ip2asn)"
 
 # ====================================================================
 
@@ -95,7 +88,6 @@ function get_lcount()
 }
 
 # ====================================================================
-
 
 TEMPDIR="${CACHEDIR}/${MODULENAME}_tmpdir_$(RandomString)"
 
