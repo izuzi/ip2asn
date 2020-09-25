@@ -3,7 +3,7 @@
 # Cache file purging script.
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-23 12:01:00 UTC
+# @version    2020-09-25 08:19:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -57,7 +57,7 @@ TLIMIT="$(($(date +"%s")-CACHETIME))"
 function lineExists()
 {
   # lineExists filename string
-  cat "$1" | grep "$2" && \
+  cat "$1" | grep "$2" >/dev/null 2>&1 && \
     return 0 || \
     return 1
 }
