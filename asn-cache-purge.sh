@@ -164,13 +164,10 @@ then
         deleted="$((deleted+1))"
       fi
     done < $TEMPA
-    if (( deleted > 0 ))
-    then
-      log_write "STALE: Deleted $deleted lines" "1"
-      chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-      mv $TEMPB $cachefile
-      rm $TEMPA
-    fi
+    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+    mv $TEMPB $cachefile
+    rm $TEMPA
+    (( deleted > 0 )) && log_write "STALE: Deleted $deleted lines" "1"
   else
     log_write "STALE: Oldest record is $(sec2days "$(($(date +"%s")-oldest))") old" "2"
   fi
@@ -196,13 +193,10 @@ then
       deleted="$((deleted+1))"
     fi
   done < $TEMPA
-  if (( deleted > 0 ))
-  then
-    log_write "DUPLICATES: Deleted $deleted lines" "1"
-    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-    mv $TEMPB $cachefile
-    rm $TEMPA
-  fi
+  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+  mv $TEMPB $cachefile
+  rm $TEMPA
+  (( deleted > 0 )) && log_write "DUPLICATES: Deleted $deleted lines" "1"
 else
   log_write "DUPLICATES: File not found or empty" "2"
 fi
@@ -261,13 +255,10 @@ then
         deleted="$((deleted+1))"
       fi
     done < $TEMPA
-    if (( deleted > 0 ))
-    then
-      log_write "STALE: Deleted $deleted lines" "1"
-      chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-      mv $TEMPB $cachefile
-      rm $TEMPA
-    fi
+    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+    mv $TEMPB $cachefile
+    rm $TEMPA
+    (( deleted > 0 )) && log_write "STALE: Deleted $deleted lines" "1"
   else
     log_write "STALE: Oldest record is $(sec2days "$(($(date +"%s")-oldest))") old" "2"
   fi
@@ -292,13 +283,10 @@ then
       deleted="$((deleted+1))"
     fi
   done < $TEMPA
-  if (( deleted > 0 ))
-  then
-    log_write "DUPLICATES: Deleted $deleted lines" "1"
-    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-    mv $TEMPB $cachefile
-    rm $TEMPA
-  fi
+  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+  mv $TEMPB $cachefile
+  rm $TEMPA
+  (( deleted > 0 )) && log_write "DUPLICATES: Deleted $deleted lines" "1"
 else
   log_write "DUPLICATES: File not found or empty" "2"
 fi
