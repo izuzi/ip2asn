@@ -3,7 +3,7 @@
 # Cache file purging script.
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-25 08:19:00 UTC
+# @version    2020-09-25 13:41:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -92,8 +92,7 @@ function sec2days()
 
 function log_write()
 {
-  # Usage:
-  # $ log_write <string> <severity>
+  # log_write <string> <severity>
   local string="$1"
   local severity="$2"
   (( severity <= LOG_LEVEL )) && echo "$(date +"%Y-%m-%d %H:%M:%S") $MODULENAME/$SUBNAME[$BASHPID]: $string" >> $debugLog
@@ -165,11 +164,16 @@ then
         deleted="$((deleted+1))"
       fi
     done < $TEMPA
-    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-    mv $TEMPB $cachefile
-    rm $TEMPA
+    if (( deleted > 0 ))
+    then
+      log_write "STALE: Deleted $deleted lines" "1"
+      chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+      mv $TEMPB $cachefile
+      rm $TEMPA
+    fi
+  else
+    log_write "STALE: Oldest record is $(sec2days "$(($(date +"%s")-oldest))") old" "2"
   fi
-  log_write "STALE: Deleted $deleted lines" "1"
 else
   log_write "STALE: File not found or empty" "2"
 fi
@@ -192,10 +196,13 @@ then
       deleted="$((deleted+1))"
     fi
   done < $TEMPA
-  log_write "DUPLICATES: Deleted $deleted lines" "1"
-  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-  mv $TEMPB $cachefile
-  rm $TEMPA
+  if (( deleted > 0 ))
+  then
+    log_write "DUPLICATES: Deleted $deleted lines" "1"
+    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+    mv $TEMPB $cachefile
+    rm $TEMPA
+  fi
 else
   log_write "DUPLICATES: File not found or empty" "2"
 fi
@@ -254,11 +261,16 @@ then
         deleted="$((deleted+1))"
       fi
     done < $TEMPA
-    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-    mv $TEMPB $cachefile
-    rm $TEMPA
+    if (( deleted > 0 ))
+    then
+      log_write "STALE: Deleted $deleted lines" "1"
+      chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+      mv $TEMPB $cachefile
+      rm $TEMPA
+    fi
+  else
+    log_write "STALE: Oldest record is $(sec2days "$(($(date +"%s")-oldest))") old" "2"
   fi
-  log_write "STALE: Deleted $deleted lines" "1"
 else
   log_write "STALE: File not found or empty" "2"
 fi
@@ -280,10 +292,13 @@ then
       deleted="$((deleted+1))"
     fi
   done < $TEMPA
-  log_write "DUPLICATES: Deleted $deleted lines" "1"
-  chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-  mv $TEMPB $cachefile
-  rm $TEMPA
+  if (( deleted > 0 ))
+  then
+    log_write "DUPLICATES: Deleted $deleted lines" "1"
+    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+    mv $TEMPB $cachefile
+    rm $TEMPA
+  fi
 else
   log_write "DUPLICATES: File not found or empty" "2"
 fi
