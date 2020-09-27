@@ -3,7 +3,7 @@
 # Cache file purging script.
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-27 08:17:00 UTC
+# @version    2020-09-27 12:12:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -151,7 +151,7 @@ then
     rm $TEMPA
     (( deleted > 0 )) && log_write "-STALE: Deleted $deleted lines" "1"
   else
-    log_write " STALE: Oldest record is $(sec2days "$(($(date +"%s")-tstamp))") old" "2"
+    log_write " STALE: Oldest record is $(sec2days "$age") old" "2"
   fi
 else
   log_write " STALE: File not found or empty" "2"
@@ -197,7 +197,7 @@ then
     rm $TEMPA
     (( deleted > 0 )) && log_write "-STALE: Deleted $deleted lines" "1"
   else
-    log_write " STALE: Oldest record is $(sec2days "$(($(date +"%s")-tstamp))") old" "2"
+    log_write " STALE: Oldest record is $(sec2days "$age") old" "2"
   fi
 else
   log_write " STALE: File not found or empty" "2"
