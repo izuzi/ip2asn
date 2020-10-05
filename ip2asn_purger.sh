@@ -3,7 +3,7 @@
 # Cache file purging script.
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-09-27 12:12:00 UTC
+# @version    2020-10-05 06:31:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -31,7 +31,7 @@ TSTARTM="$(date +"%s.%N")"
 CACHEDIR="/srv/bgp"
 
 # Cache time in seconds
-CACHETIME="1209600" # 14 days
+CACHETIME="345600" # 4 days
 
 # If a files has more than MAX_LINES, it will be tailed to $REDUCETO_LINES
 MAX_LINES="500000"
@@ -146,9 +146,11 @@ then
         deleted="$((deleted+1))"
       fi
     done < $TEMPA
-    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-    mv $TEMPB $cachefile
-    rm $TEMPA
+    if [ -s $TEMPB ]; then
+      chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+      mv $TEMPB $cachefile
+    fi
+    rm -f $TEMPA
     (( deleted > 0 )) && log_write "-STALE: Deleted $deleted lines" "1"
   else
     log_write " STALE: Oldest record is $(sec2days "$age") old" "2"
@@ -192,9 +194,11 @@ then
         deleted="$((deleted+1))"
       fi
     done < $TEMPA
-    chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
-    mv $TEMPB $cachefile
-    rm $TEMPA
+    if [ -s $TEMPB ]; then
+      chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
+      mv $TEMPB $cachefile
+    fi
+    rm -f $TEMPA
     (( deleted > 0 )) && log_write "-STALE: Deleted $deleted lines" "1"
   else
     log_write " STALE: Oldest record is $(sec2days "$age") old" "2"
