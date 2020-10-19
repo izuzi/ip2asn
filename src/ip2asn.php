@@ -4,7 +4,7 @@
  * Maps IP address to as number; prefixes for given AS and other
  * related methods.
  *
- * @version    2020-09-22 18:36:00 UTC
+ * @version    2020-10-19 09:31:00 UTC
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2020 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -34,7 +34,7 @@ class ip2asn
    * Name of this library as first part of file name
    * @var string
    */
-  const NAME_PREFIX = 'ip2asn_';
+  const NAME_PREFIX='ip2asn_';
 
 
   /**
@@ -48,7 +48,7 @@ class ip2asn
    * Filename suffix of ASN to name lookup.
    * @var string
    */
-  const ASN2NAME_FILESUFFIX = 'asn2name.db';
+  const ASN2NAME_FILESUFFIX='asn2name.db';
 
 
   /**
@@ -84,7 +84,7 @@ class ip2asn
    * Default value of maximum age of cache files.
    * @var integer
    */
-  const CACHING_TIME_DEFAULT = 604800;
+  const CACHING_TIME_DEFAULT=604800;
 
 
   /**
@@ -95,8 +95,8 @@ class ip2asn
   public function __construct($dir)
   {
     $this->_check_cachedir($dir);
-    $this->_file_prefix = $this->_get_cachedir().'/'.self::NAME_PREFIX;
-    $this->_asn2name_filename = $this->_get_cachedir().'/'.self::NAME_PREFIX.self::ASN2NAME_FILESUFFIX;
+    $this->_file_prefix=$this->_get_cachedir().'/'.self::NAME_PREFIX;
+    $this->_asn2name_filename=$this->_get_cachedir().'/'.self::NAME_PREFIX.self::ASN2NAME_FILESUFFIX;
   }
 
 
@@ -107,14 +107,14 @@ class ip2asn
    */
   private function _check_cachedir($dir)
   {
-    $dir = rtrim($dir, '/');
-    if (empty($dir) || strpos($dir, "\0") !== false) {
+    $dir=rtrim($dir, '/');
+    if (empty($dir) || strpos($dir, "\0")!==false) {
       throw new Exception("Illegal value argument dir");
     }
     if (!file_exists($dir) || !is_dir($dir)) {
       throw new Exception("Valid cache directory must be specified");
     }
-    $this->_cachedir = $dir;
+    $this->_cachedir=$dir;
   }
 
 
@@ -152,70 +152,66 @@ class ip2asn
   public function getAsn($addr)
   {
     if (!is_string($addr) || !$this->_valid_ip($addr)) throw new Exception("Illegal type/value argument addr");
-    $ver = $this->_get_ipv($addr);
-    $bin = $this->_ip2binstr($addr, $ver);
-    $file = $this->_get_file_prefix()."v${ver}_asdata.cache";
-    $arr = array();
-    if (file_exists($file))
-    {
-      $fileObj = new SplFileObject($file, 'r');
-      while (!$fileObj->flock(LOCK_EX)) {
-        usleep(1);
-      }
-      while (!$fileObj->eof())
-      {
-        $line = $fileObj->fgets();
-        if (strpos($line, '|') !== false) {
-          $found = array();
-          $found = explode('|', trim($line));
-          if ($this->_match_bin_strings($bin, $found[1])) {
-            $fileObj->flock(LOCK_UN);
-            $found[] = 'ip2asn';
-            return $this->_make_result_array($found);
-          }
-        }
-      }
-      $fileObj->flock(LOCK_UN);
-      $fileObj = null;
-    }
-
-    $arr = $this->_get_cymru_asn($addr, $ver);
-
-    if (empty($arr)) {
-      $values = array(
-        0 => time(),
-        1 => '',
-        2 => '',
-        3 => '',
-        4 => '',
-        5 => '',
-        6 => '',
-        7 => '',
-        8 => 'ip2asn',
-      );
-      return $this->_make_result_array($values);
-    }
-
-    $values = array(
-      0 => time(),
-      1 => $this->_cidr2binprefix($arr[1]),
-      2 => $arr[1],
-      3 => $arr[2],
-      4 => $arr[0],
-      5 => $this->Asn2description($arr[0]),
-      6 => strtoupper($arr[3]),
-      7 => $arr[4],
-    );
-
-    $fileObj = new SplFileObject($file, 'a');
+    $ver=$this->_get_ipv($addr);
+    $bin=$this->_ip2binstr($addr, $ver);
+    $file=$this->_get_file_prefix()."v${ver}_asdata.cache";
+    $arr=array();
+    if (!file_exists($file)) touch($file);
+    $fileObj=new SplFileObject($file, 'r+');
     while (!$fileObj->flock(LOCK_EX)) {
       usleep(1);
     }
-    $str = implode('|', $values);
+    while (!$fileObj->eof())
+    {
+      $line=$fileObj->fgets();
+      if (strpos($line, '|')!==false) {
+        $found=array();
+        $found=explode('|', trim($line));
+        if ($this->_match_bin_strings($bin, $found[1])) {
+          $fileObj->flock(LOCK_UN);
+          $found[]='ip2asn';
+          return $this->_make_result_array($found);
+        }
+      }
+    }
+
+    $arr=$this->_get_cymru_asn($addr, $ver);
+
+    if (empty($arr)) {
+      $values=array(
+        0=>time(),
+        1=>'',
+        2=>'',
+        3=>'',
+        4=>'',
+        5=>'',
+        6=>'',
+        7=>'',
+        8=>'ip2asn',
+      );
+      $fileObj->flock(LOCK_UN);
+      return $this->_make_result_array($values);
+    }
+
+    if (empty($arr[1])) {
+      throw new Exception("Undefined key 1. Address $addr");
+    }
+
+    $values=array(
+      0=>time(),
+      1=>$this->_cidr2binprefix($arr[1]),
+      2=>$arr[1],
+      3=>$arr[2],
+      4=>$arr[0],
+      5=>$this->Asn2description($arr[0]),
+      6=>strtoupper($arr[3]),
+      7=>$arr[4],
+    );
+
+    $str=implode('|', $values);
     $fileObj->fwrite("$str\n");
     $fileObj->flock(LOCK_UN);
-
-    $values[8] = 'ip2asn';
+    $values[8]='ip2asn';
     return $this->_make_result_array($values);
   }
 
@@ -229,16 +225,18 @@ class ip2asn
    */
   private function _get_cymru_asn($addr, $ver)
   {
-    $arr = array();
+    $arr=array();
     switch ($ver) {
     case 4:
       exec('dig +short '.$this->_get_rev_addr_four($addr).'.origin.asn.cymru.com TXT', $arr); break;
     case 6:
       exec('dig +short '.$this->_get_rev_addr_six($addr).'.origin6.asn.cymru.com TXT', $arr); break;
+    default:
+      throw new Exception("Illegal value ver");
     }
     if (empty($arr)) return array();
-    $count = count($arr);
-    $new = explode('|', trim($arr[$count-1], " \"\t\n\r\0\x0B"));
+    # The array may have more than one result, but we use the first one.
+    $new=explode('|', trim($arr[0], " \"\t\n\r\0\x0B"));
     return array_map('trim', $new);
   }
 
@@ -250,7 +248,7 @@ class ip2asn
    */
   public function Asn2description($num)
   {
-    $num = (integer) $num;
+    $num=(integer) $num;
     return trim(shell_exec("grep -P '^AS${num}\ ' ".$this->_asn2name_filename." | sed 's/^AS[0-9]*[ \t]*//'"));
   }
 
@@ -263,12 +261,12 @@ class ip2asn
    */
   public function Asn2prefix($num, $ver)
   {
-    $num = (integer) $num;
-    if ($num < 1) throw new Exception("Illegal value argument num");
+    $num=(integer) $num;
+    if ($num<1) throw new Exception("Illegal value argument num");
 
-    if (!is_integer($ver) || ($ver !== 4 && $ver !== 6)) throw new Exception("Illegal type/value argument ver");
+    if (!is_integer($ver) || ($ver!==4 && $ver!==6)) throw new Exception("Illegal type/value argument ver");
 
-    $file = $this->_get_file_prefix()."prefixes_v${ver}_${num}.json";
+    $file=$this->_get_file_prefix()."prefixes_v${ver}_${num}.json";
     if (file_exists($file)) {
       if ((filemtime($file) + $this->_get_caching_time()) > time()) {
         return json_decode($this->_get_file_contents($file), true);
@@ -283,27 +281,27 @@ class ip2asn
       exec("whois -h whois.radb.net '!6as$num'", $arr); break;
     }
 
-    if (empty($arr) || count($arr) == 1) return array();
+    if (empty($arr) || count($arr)===1) return array();
     array_shift($arr); # Remove the first element
     array_pop($arr);   # Remove the last element
-    $new = array();
+    $new=array();
     foreach ($arr as $val) {
-      if (strpos($val, ' ') !== false) {
-        $tmparr = explode(' ', $val);
+      if (strpos($val, ' ')!==false) {
+        $tmparr=explode(' ', $val);
         foreach ($tmparr as $cidr) {
-          if ($this->_valid_AnyCidr($cidr, $ver)) $new[] = $cidr;
+          if ($this->_valid_AnyCidr($cidr, $ver)) $new[]=$cidr;
         }
       }
     }
     unset($arr);
-    $new = array_unique($new);
+    $new=array_unique($new);
     switch ($ver) {
     case 4:
       natsort($new); break;
     case 6:
-      $new = $this->_sort_cidr_array($new); break;
+      $new=$this->_sort_cidr_array($new); break;
     }
-    $new = array_values($new);
+    $new=array_values($new);
     $this->_put_file_contents($file, json_encode($new, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
     return $new;
   }
@@ -327,7 +325,7 @@ class ip2asn
    */
   private static function _make_result_array($values)
   {
-    $keys = array(
+    $keys=array(
       'as_timestamp',
       'as_prefix_bin',
       'as_prefix',
@@ -349,8 +347,8 @@ class ip2asn
    */
   private function _get_rev_addr_four($addr)
   {
-    $tok = explode('.', $addr);
-    $tok = array_reverse($tok);
+    $tok=explode('.', $addr);
+    $tok=array_reverse($tok);
     return implode('.', $tok);
   }
 
@@ -362,10 +360,10 @@ class ip2asn
    */
   private function _get_rev_addr_six($addr)
   {
-    $addr = $this->_expand_addr_six($addr);
-    $tok  = str_replace(':', '', $addr);
-    $tok  = str_split($tok);
-    $tok  = array_reverse($tok);
+    $addr=$this->_expand_addr_six($addr);
+    $tok=str_replace(':', '', $addr);
+    $tok=str_split($tok);
+    $tok=array_reverse($tok);
     return implode('.', $tok);
   }
 
@@ -377,17 +375,17 @@ class ip2asn
    */
   private function _sort_cidr_array($arr)
   {
-    $new = array();
-    foreach ($arr as $key => $cidr) {
-      list($addr, $bits) = explode("/", $cidr);
-      $new[inet_pton($addr)] = $bits;
+    $new=array();
+    foreach ($arr as $key=>$cidr) {
+      list($addr, $bits)=explode("/", $cidr);
+      $new[inet_pton($addr)]=$bits;
     }
     unset($arr);
     ksort($new);
-    $out = array();
-    foreach($new as $binstr => $bits) {
-      $addr = inet_ntop($binstr);
-      $out[] = "$addr/$bits";
+    $out=array();
+    foreach($new as $binstr=>$bits) {
+      $addr=inet_ntop($binstr);
+      $out[]="$addr/$bits";
     }
     return $out;
   }
@@ -402,7 +400,7 @@ class ip2asn
    */
   private function _valid_AnyCidr($cidr, $ver)
   {
-    if (strpos($cidr, '/') === false) return false;
+    if (strpos($cidr, '/')===false) return false;
     switch ($ver) {
     case 4:
       return $this->_valid_cidr4($cidr);
@@ -421,9 +419,9 @@ class ip2asn
    */
   private function _valid_cidr4($cidr)
   {
-    if (strpos($cidr, '/') !== false) {
-      list($addr, $bits) = explode('/', $cidr);
-      if ($bits <= 32 && $bits >= 12) {
+    if (strpos($cidr, '/')!==false) {
+      list($addr, $bits)=explode('/', $cidr);
+      if ($bits<=32 && $bits>=12) {
         if (preg_match('/^(([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/', $addr)) return true;
       }
     }
@@ -438,9 +436,9 @@ class ip2asn
    */
   private function _valid_cidr6($cidr)
   {
-    if (strpos($cidr, '/') !== false) {
-      list($addr, $bits) = explode('/', $cidr);
-      if ($bits <= 128 && $bits >= 10) {
+    if (strpos($cidr, '/')!==false) {
+      list($addr, $bits)=explode('/', $cidr);
+      if ($bits<=128 && $bits>=10) {
         if (preg_match('/^2[0-9a-f]{3}:[0-9a-f:]{3,34}$/i', $addr)) return true;
       }
     }
@@ -456,15 +454,15 @@ class ip2asn
    */
   public function ArrayAsn2prefix($arr, $ver)
   {
-    $new = array();
+    $new=array();
     foreach ($arr as $num) {
-      if ($arr = $this->Asn2prefix($num, $ver)) {
-        $new = array_merge($new, $arr);
+      if ($arr=$this->Asn2prefix($num, $ver)) {
+        $new=array_merge($new, $arr);
       }
     }
     if (!empty($new)) {
-      $new = array_unique($new);
-      $new = array_values($new);
+      $new=array_unique($new);
+      $new=array_values($new);
       natsort($new);
       return $new;
     }
@@ -479,7 +477,7 @@ class ip2asn
    */
   private function _get_ipv($addr)
   {
-    return (strpos($addr, ':') === false) ? 4 : 6;
+    return (strpos($addr, ':')===false) ? 4: 6;
   }
 
 
@@ -490,22 +488,22 @@ class ip2asn
    */
   private function _ip2binstr($addr)
   {
-    if (strpos($addr, ':') === false) {
-      $addr = inet_pton($addr);
-      $value = unpack('H*', $addr);
-      $addr = base_convert($value[1], 16, 2);
+    if (strpos($addr, ':')===false) {
+      $addr=inet_pton($addr);
+      $value=unpack('H*', $addr);
+      $addr=base_convert($value[1], 16, 2);
       return str_pad($addr, 32, '0', STR_PAD_LEFT);
     }
-    $addr_n = inet_pton($addr);
-    $bits = 15;
-    $new = 0;
-    while ($bits >= 0) {
-      $bin = sprintf("%08b", ord($addr_n[$bits]));
+    $addr_n=inet_pton($addr);
+    $bits=15;
+    $new=0;
+    while ($bits>=0) {
+      $bin=sprintf("%08b", ord($addr_n[$bits]));
       if ($new) {
-        $new = $bin . $new;
+        $new=$bin.$new;
       }
       else {
-        $new = $bin;
+        $new=$bin;
       }
       $bits--;
     }
@@ -520,7 +518,7 @@ class ip2asn
    */
   private function _cidr2binprefix($cidr)
   {
-    list($addr, $mask) = explode('/', $cidr);
+    list($addr, $mask)=explode('/', $cidr);
     return substr($this->_ip2binstr($addr), 0, $mask);
   }
 
@@ -534,7 +532,7 @@ class ip2asn
    */
   private function _match_bin_strings($needle, $haystack)
   {
-    return substr($needle, 0, strlen($haystack)) === $haystack;
+    return substr($needle, 0, strlen($haystack))===$haystack;
   }
 
 
@@ -545,26 +543,26 @@ class ip2asn
    */
   private function _expand_addr_six($addr)
   {
-    if (strpos($addr, '::') !== false) {
-      $part = explode('::', $addr);
-      $part[0] = explode(':', $part[0]);
-      $part[1] = explode(':', $part[1]);
-      $missing = array();
-      for ($i = 0; $i < (8 - (count($part[0]) + count($part[1]))); $i++) {
+    if (strpos($addr, '::')!==false) {
+      $part=explode('::', $addr);
+      $part[0]=explode(':', $part[0]);
+      $part[1]=explode(':', $part[1]);
+      $missing=array();
+      for ($i=0; $i<(8-(count($part[0])+count($part[1]))); $i++) {
         array_push($missing, '0000');
       }
-      $missing = array_merge($part[0], $missing);
-      $part = array_merge($missing, $part[1]);
+      $missing=array_merge($part[0], $missing);
+      $part=array_merge($missing, $part[1]);
     }
     else {
-      $part = explode(":", $addr);
+      $part=explode(":", $addr);
     }
     foreach ($part as &$p) {
-      $p = str_pad($p, 4, '0', STR_PAD_LEFT);
+      $p=str_pad($p, 4, '0', STR_PAD_LEFT);
     }
     unset($p);
-    $result = implode(':', $part);
-    if (strlen($result) === 39) {
+    $result=implode(':', $part);
+    if (strlen($result)===39) {
       return $result;
     }
     return false;
@@ -580,7 +578,7 @@ class ip2asn
    */
   private function _first_before_glue($glue, $str)
   {
-    return (strpos($str, $glue) === false) ? $str: strstr($str, $glue, true);
+    return (strpos($str, $glue)===false) ? $str: strstr($str, $glue, true);
   }
 
 
@@ -592,11 +590,11 @@ class ip2asn
    */
   private function _put_file_contents($file, $str)
   {
-    $fileObj = new SplFileObject($file, 'w');
+    $fileObj=new SplFileObject($file, 'w');
     while (!$fileObj->flock(LOCK_EX)) {
       usleep(1);
     }
-    $bytes = $fileObj->fwrite($str);
+    $bytes=$fileObj->fwrite($str);
     $fileObj->flock(LOCK_UN);
     return $bytes;
   }
@@ -609,16 +607,16 @@ class ip2asn
    */
   private function _get_file_contents($file)
   {
-    $fileObj = new SplFileObject($file, 'r');
+    $fileObj=new SplFileObject($file, 'r');
     while (!$fileObj->flock(LOCK_EX)) {
       usleep(1);
     }
-    $size = $fileObj->getSize();
-    if ($size == 0) {
+    $size=$fileObj->getSize();
+    if ($size===0) {
       $fileObj->flock(LOCK_UN);
       return '';
     }
-    $str = $fileObj->fread($size);
+    $str=$fileObj->fread($size);
     $fileObj->flock(LOCK_UN);
     return $str;
   }
@@ -634,10 +632,10 @@ class ip2asn
       return $this->_caching_time;
     }
     if (!empty($this->cache_time) && is_integer($this->cache_time)) {
-      $this->_caching_time = $this->cache_time;
+      $this->_caching_time=$this->cache_time;
     }
     else {
-      $this->_caching_time = self::CACHING_TIME_DEFAULT;
+      $this->_caching_time=self::CACHING_TIME_DEFAULT;
     }
     return $this->_caching_time;
   }
