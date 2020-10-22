@@ -3,7 +3,7 @@
 # Cache file purging script.
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-10-05 06:31:00 UTC
+# @version    2020-10-22 08:21:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -54,14 +54,6 @@ TLIMIT="$(($(date +"%s")-CACHETIME))"
 
 # ====================================================================
 
-function lineExists()
-{
-  # lineExists filename string
-  cat "$1" | grep "$2" >/dev/null 2>&1 && \
-    return 0 || \
-    return 1
-}
-
 function milliStopwatch()
 {
   local intval="$(echo "$(date +"%s.%N")-$1" | bc -l)"
@@ -76,14 +68,11 @@ function milliStopwatch()
 function sec2days()
 {
   local secs="$1"
-  if (( secs >= 86400 ))
-  then
+  if (( secs >= 86400 )); then
     printf %s "$((secs/86400))d"
-  elif (( secs >= 3600 ))
-    then
+  elif (( secs >= 3600 )); then
     printf %s "$((secs/3600))h"
-  elif (( secs >= 60 ))
-    then
+  elif (( secs >= 60 )); then
     printf %s "$((secs/60))m"
   else
     printf %s "${secs}s"
@@ -147,7 +136,6 @@ then
       fi
     done < $TEMPA
     if [ -s $TEMPB ]; then
-      chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
       mv $TEMPB $cachefile
     fi
     rm -f $TEMPA
@@ -195,7 +183,6 @@ then
       fi
     done < $TEMPA
     if [ -s $TEMPB ]; then
-      chown www-data:www-data $TEMPB && chmod 0644 $TEMPB
       mv $TEMPB $cachefile
     fi
     rm -f $TEMPA
