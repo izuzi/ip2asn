@@ -4,7 +4,7 @@
  * Maps IP address to as number; prefixes for given AS and other
  * related methods.
  *
- * @version    2020-11-09 09:35:00 UTC
+ * @version    2020-11-09 15:46:00 UTC
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2020 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -60,6 +60,13 @@ class ip2asn
 
 
   /**
+   * File object for reading asn2name database.
+   * @var object
+   */
+  private $_nameObj;
+
+
+  /**
    * User-specific maximum age of cache files.
    * @var integer
    */
@@ -97,6 +104,7 @@ class ip2asn
     $this->_check_cachedir($dir);
     $this->_file_prefix=$this->_get_cachedir().'/'.self::NAME_PREFIX;
     $this->_asn2name_filename=$this->_get_cachedir().'/'.self::NAME_PREFIX.self::ASN2NAME_FILESUFFIX;
+    $this->_nameObj=new SplFileObject($this->_asn2name_filename, 'r');
   }
 
 
@@ -243,13 +251,27 @@ class ip2asn
 
   /**
    * Returns organisation/isp of given AS number.
-   * @param  integer
+   * @param  integer (omit the AS part)
    * @return string
    */
   public function Asn2description($num)
   {
     $num=(integer) $num;
-    return trim(shell_exec("grep -P '^AS${num}\ ' ".$this->_asn2name_filename." | sed 's/^AS[0-9]*[ \t]*//'"));
+    $needle="AS${num} ";
+    $len=strlen($needle);
+    while (!$this->_nameObj->flock(LOCK_SH)) {
+      usleep(1);
+    }
+    while (!$this->_nameObj->eof())
+    {
+      $line=$this->_nameObj->fgets();
+      if (substr($line, 0, $len)===$needle) {
+        $this->_nameObj->flock(LOCK_UN);
+        return trim(substr($line, $len));
+      }
+    }
+    $this->_nameObj->flock(LOCK_UN);
+    return "";
   }
 
 
@@ -268,7 +290,7 @@ class ip2asn
 
     $file=$this->_get_file_prefix()."prefixes_v${ver}_${num}.json";
     if (file_exists($file)) {
-      if ((filemtime($file) + $this->_get_caching_time()) > time()) {
+      if ((filemtime($file)+$this->_get_caching_time())>time()) {
         return json_decode($this->_get_file_contents($file), true);
       }
       @unlink($file);
@@ -426,7 +448,7 @@ class ip2asn
 
 
   /**
-   * Simple IP address validation, both v4 and v6.
+   * Address validation (both v4 and v6).
    * @param  string
    * @return boolean
    */
@@ -616,13 +638,9 @@ class ip2asn
     if (!empty($this->_caching_time)) {
       return $this->_caching_time;
     }
-    if (!empty($this->cache_time) && is_integer($this->cache_time)) {
-      $this->_caching_time=$this->cache_time;
-    }
-    else {
-      $this->_caching_time=self::CACHING_TIME_DEFAULT;
-    }
+    $this->_caching_time=(!empty($this->cache_time) && is_integer($this->cache_time)) ? $this->cache_time: self::CACHING_TIME_DEFAULT;
     return $this->_caching_time;
   }
+
 
 }
