@@ -4,7 +4,7 @@
  * Maps IP address to as number; prefixes for given AS and other
  * related methods.
  *
- * @version    2020-10-19 09:31:00 UTC
+ * @version    2020-11-09 09:35:00 UTC
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2020 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -285,9 +285,9 @@ class ip2asn
     array_shift($arr); # Remove the first element
     array_pop($arr);   # Remove the last element
     $new=array();
-    foreach ($arr as $val) {
-      if (strpos($val, ' ')!==false) {
-        $tmparr=explode(' ', $val);
+    foreach ($arr as $line) {
+      if (strpos($line, ' ')!==false) {
+        $tmparr=explode(' ', $line);
         foreach ($tmparr as $cidr) {
           if ($this->_valid_AnyCidr($cidr, $ver)) $new[]=$cidr;
         }
@@ -304,17 +304,6 @@ class ip2asn
     $new=array_values($new);
     $this->_put_file_contents($file, json_encode($new, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
     return $new;
-  }
-
-
-  /**
-   * Simple IP address validation, both v4 and v6.
-   * @param  string
-   * @return boolean
-   */
-  private function _valid_ip($addr)
-  {
-    return (preg_match('/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|([a-f0-9]{4}:[a-f0-9:]{3,34}))$/i', $addr)) ? true: false;
   }
 
 
@@ -419,13 +408,8 @@ class ip2asn
    */
   private function _valid_cidr4($cidr)
   {
-    if (strpos($cidr, '/')!==false) {
-      list($addr, $bits)=explode('/', $cidr);
-      if ($bits<=32 && $bits>=12) {
-        if (preg_match('/^(([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/', $addr)) return true;
-      }
-    }
-    return false;
+    list($addr, $bits)=explode('/', $cidr);
+    return ($bits<=32 && $bits>=10 && filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) ? true: false;
   }
 
 
@@ -436,13 +420,19 @@ class ip2asn
    */
   private function _valid_cidr6($cidr)
   {
-    if (strpos($cidr, '/')!==false) {
-      list($addr, $bits)=explode('/', $cidr);
-      if ($bits<=128 && $bits>=10) {
-        if (preg_match('/^2[0-9a-f]{3}:[0-9a-f:]{3,34}$/i', $addr)) return true;
-      }
-    }
-    return false;
+    list($addr, $bits)=explode('/', $cidr);
+    return ($bits<=128 && $bits>=10 && filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) ? true: false;
+  }
+
+
+  /**
+   * Simple IP address validation, both v4 and v6.
+   * @param  string
+   * @return boolean
+   */
+  private function _valid_ip($addr)
+  {
+    return (filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) ? true: false;
   }
 
 
@@ -608,15 +598,10 @@ class ip2asn
   private function _get_file_contents($file)
   {
     $fileObj=new SplFileObject($file, 'r');
-    while (!$fileObj->flock(LOCK_EX)) {
+    while (!$fileObj->flock(LOCK_SH)) {
       usleep(1);
     }
-    $size=$fileObj->getSize();
-    if ($size===0) {
-      $fileObj->flock(LOCK_UN);
-      return '';
-    }
-    $str=$fileObj->fread($size);
+    $str=$fileObj->fread($fileObj->getSize());
     $fileObj->flock(LOCK_UN);
     return $str;
   }

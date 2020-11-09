@@ -3,7 +3,7 @@
 # Cache file purging script.
 # This script is part of ip2asn PHP library.
 #
-# @version    2020-10-22 08:21:00 UTC
+# @version    2020-11-09 09:38:00 UTC
 # @author     Peter Kahl <https://github.com/peterkahl>
 # @copyright  2015-2020 Peter Kahl
 # @license    Apache License, Version 2.0
@@ -89,12 +89,19 @@ function log_write()
 
 function RandomString()
 {
-  printf %s "$(openssl rand -base64 13 | tr -cd "[0-9A-Za-z]")"
+  local len="$1"
+  (( len < 8 )) && \
+    len=8
+  local array=()
+  for i in {a..z} {A..Z} {0..9}; do
+    array[$RANDOM]=$i
+  done
+  printf %s "${array[@]::$len}"
 }
 
 function get_lcount()
 {
-  printf %s "$(wc -l $1 | cut -d " " -f1)"
+  printf %d "$(wc -l $1 | cut -d " " -f1)"
 }
 
 READABLECTM="$(sec2days "$CACHETIME")"
@@ -106,7 +113,7 @@ cachefile="${CACHEDIR}/${MODULENAME}_v${ver}_asdata.cache"
 
 log_write ">>>> Purging file $cachefile ; CACHETIME=${READABLECTM}" "1"
 
-randstr="$(RandomString)"
+randstr="$(RandomString 8)"
 TEMPA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
 TEMPB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
 
@@ -153,7 +160,7 @@ cachefile="${CACHEDIR}/${MODULENAME}_v${ver}_asdata.cache"
 
 log_write ">>>> Purging file $cachefile ; CACHETIME=${READABLECTM}" "1"
 
-randstr="$(RandomString)"
+randstr="$(RandomString 8)"
 TEMPA="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_A.tmp"
 TEMPB="${CACHEDIR}/${MODULENAME}_tmp_${randstr}_B.tmp"
 
