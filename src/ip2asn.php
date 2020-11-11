@@ -4,7 +4,7 @@
  * Maps IP address to as number; prefixes for given AS and other
  * related methods.
  *
- * @version    2020-11-09 15:46:00 UTC
+ * @version    2020-11-11 07:51:00 UTC
  * @author     Peter Kahl <https://github.com/peterkahl>
  * @copyright  2015-2020 Peter Kahl
  * @license    Apache License, Version 2.0
@@ -311,7 +311,7 @@ class ip2asn
       if (strpos($line, ' ')!==false) {
         $tmparr=explode(' ', $line);
         foreach ($tmparr as $cidr) {
-          if ($this->_valid_AnyCidr($cidr, $ver)) $new[]=$cidr;
+          if ($this->_valid_AnyCidr($cidr)) $new[]=$cidr;
         }
       }
     }
@@ -405,45 +405,12 @@ class ip2asn
   /**
    * Validates any cidr, ie, v4 or v6.
    * @param  string
-   * @param  integer
    * @return boolean
    * @throws \Exception
    */
-  private function _valid_AnyCidr($cidr, $ver)
+  private function _valid_AnyCidr($cidr)
   {
-    if (strpos($cidr, '/')===false) return false;
-    switch ($ver) {
-    case 4:
-      return $this->_valid_cidr4($cidr);
-    case 6:
-      return $this->_valid_cidr6($cidr);
-    default:
-      throw new Exception("Illegal value argument ver");
-    }
-  }
-
-
-  /**
-   * Validates v4 cidr.
-   * @param  string
-   * @return boolean
-   */
-  private function _valid_cidr4($cidr)
-  {
-    list($addr, $bits)=explode('/', $cidr);
-    return ($bits<=32 && $bits>=10 && filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) ? true: false;
-  }
-
-
-  /**
-   * Validates v6 cidr.
-   * @param  string
-   * @return boolean
-   */
-  private function _valid_cidr6($cidr)
-  {
-    list($addr, $bits)=explode('/', $cidr);
-    return ($bits<=128 && $bits>=10 && filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) ? true: false;
+    return (preg_match('/^([1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.){2}(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\/([6-9]|[1-2]\d|3[12])$|^2[0-9a-f]{3}:(:|:?[0-9a-f]{1,4}){1,7}\/([1-9][0-9]|1[01][0-9]|12[0-8])$/', $cidr)) ? true: false;
   }
 
 
@@ -454,7 +421,7 @@ class ip2asn
    */
   private function _valid_ip($addr)
   {
-    return (filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) ? true: false;
+    return (preg_match('/^([1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.){2}(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$|^2[0-9a-f]{3}:(:|:?[0-9a-f]{1,4}){1,7}$/i', $addr)) ? true: false;
   }
 
 
